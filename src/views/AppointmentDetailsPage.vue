@@ -20,7 +20,7 @@
         <IonText color="danger">
           <h2>{{ errorMessage }}</h2>
         </IonText>
-        <IonButton expand="block" @click="router.push('/home')">
+        <IonButton expand="block" @click="router.replace({ name: 'Agenda' })">
           Volver al inicio
         </IonButton>
       </div>
@@ -320,7 +320,7 @@ async function handleDelete() {
   updatingStatus.value = true;
   try {
     await deleteAppointment(appointment.value.id);
-    router.push('/tabs/agenda');
+    router.replace({ name: 'Agenda' });
   } catch (err) {
     console.error('Error deleting appointment:', err);
     errorMessage.value = 'Error al eliminar el turno';

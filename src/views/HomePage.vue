@@ -482,7 +482,7 @@
   }
   
   function goToCreateAppointment() {
-    router.push('/appointments/new');
+    router.push({ path: '/appointments/new', query: { from: 'agenda' } });
   }
 
   // Navigation functions removed - now handled by tabs

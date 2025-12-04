@@ -63,7 +63,11 @@ const router = useRouter();
 async function handleLogout() {
   try {
     await signOut(auth);
-    router.push('/onboarding');
+    // Navigate to onboarding
+    router.push('/onboarding').catch(() => {
+      // Fallback if navigation fails
+      window.location.href = '/onboarding';
+    });
   } catch (error) {
     console.error('Error signing out:', error);
   }

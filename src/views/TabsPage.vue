@@ -2,27 +2,27 @@
   <IonTabs>
     <IonRouterOutlet />
     <IonTabBar slot="bottom">
-      <IonTabButton tab="agenda" href="/tabs/agenda">
+      <IonTabButton @click="router.replace('/tabs/agenda')">
         <IonIcon :icon="calendarOutline" />
         <IonLabel>Agenda</IonLabel>
       </IonTabButton>
 
-      <IonTabButton tab="clients" href="/tabs/clients">
+      <IonTabButton @click="router.replace('/tabs/clients')">
         <IonIcon :icon="peopleOutline" />
         <IonLabel>Clientes</IonLabel>
       </IonTabButton>
 
-      <IonTabButton tab="employees" href="/tabs/employees">
+      <IonTabButton @click="router.replace('/tabs/employees')">
         <IonIcon :icon="briefcaseOutline" />
         <IonLabel>Empleados</IonLabel>
       </IonTabButton>
 
-      <IonTabButton tab="services" href="/tabs/services">
+      <IonTabButton @click="router.replace('/tabs/services')">
         <IonIcon :icon="cutOutline" />
         <IonLabel>Servicios</IonLabel>
       </IonTabButton>
 
-      <IonTabButton tab="more" href="/tabs/more">
+      <IonTabButton @click="router.replace('/tabs/more')">
         <IonIcon :icon="ellipsisHorizontalOutline" />
         <IonLabel>Más</IonLabel>
       </IonTabButton>
@@ -31,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router';
 import {
   IonTabs,
   IonRouterOutlet,
@@ -46,5 +47,7 @@ import {
   cutOutline,
   ellipsisHorizontalOutline,
 } from 'ionicons/icons';
+
+const router = useRouter();
 </script>
 

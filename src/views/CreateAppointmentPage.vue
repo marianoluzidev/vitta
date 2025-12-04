@@ -174,7 +174,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   IonPage,
   IonHeader,
@@ -201,6 +201,7 @@ import { getServicesBySalonId, type Service } from '@/services/servicesService';
 import { getClientsBySalonId, type Client } from '@/services/clientsService';
 
 const router = useRouter();
+const route = useRoute();
 
 const clientName = ref('');
 const clientPhone = ref('');
@@ -448,21 +449,12 @@ async function handleSubmit() {
     // Reset form after successful creation
     resetForm();
     
-    // Navigate to agenda tab
-    // Use nextTick to ensure DOM updates are complete before navigation
+    // Navigate back to agenda tab using replace to avoid navigation stack issues
     await nextTick();
-    
-    // Use push with error handling to avoid navigation issues
-    router.push('/tabs/agenda').catch((err) => {
-      // Ignore navigation duplicated errors
-      if (err.name !== 'NavigationDuplicated') {
-        console.error('Navigation error:', err);
-        // Fallback: try navigating by name
-        router.push({ name: 'Agenda' }).catch(() => {
-          // Last resort: use window.location
-          window.location.href = '/tabs/agenda';
-        });
-      }
+    await new Promise(resolve => setTimeout(resolve, 100));
+    router.replace({ name: 'Agenda' }).catch(() => {
+      // Fallback if navigation fails
+      window.location.href = '/tabs/agenda';
     });
   } catch (err: any) {
     console.error('Error creating appointment:', err);

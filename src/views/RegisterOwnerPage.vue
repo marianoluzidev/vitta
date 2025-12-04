@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -122,7 +122,14 @@ async function handleRegister() {
     };
 
     await registerOwner(payload);
-    router.push('/tabs/agenda');
+    
+    // Wait for auth state to update
+    await nextTick();
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Force full page reload to avoid Ionic navigation stack issues
+    // when transitioning from non-tab page to tab page
+    window.location.href = '/tabs/agenda';
   } catch (err: any) {
     console.error('Registration error:', err);
     if (err.code === 'auth/email-already-in-use') {
