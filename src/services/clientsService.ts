@@ -78,3 +78,5 @@ export async function deleteClient(id: string): Promise<void> {
   await deleteDoc(clientRef);
 }
 
+
+

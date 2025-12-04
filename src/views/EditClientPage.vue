@@ -4,7 +4,9 @@
     <IonHeader>
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton default-href="/tabs/clients"></IonBackButton>
+          <IonButton @click="goBack">
+            <IonIcon :icon="arrowBack" slot="icon-only"></IonIcon>
+          </IonButton>
         </IonButtons>
         <IonTitle>Editar cliente</IonTitle>
         <IonButtons slot="end">
@@ -104,7 +106,6 @@ import {
   IonTitle,
   IonContent,
   IonButtons,
-  IonBackButton,
   IonButton,
   IonIcon,
   IonItem,
@@ -115,7 +116,8 @@ import {
   IonText,
   alertController,
 } from '@ionic/vue';
-import { trashOutline, alertCircleOutline } from 'ionicons/icons';
+import { trashOutline, alertCircleOutline, arrowBack } from 'ionicons/icons';
+import { navigateToTab } from '@/utils/navigation';
 import {
   getClientById,
   updateClient,
@@ -140,6 +142,10 @@ const clientError = ref('');
 const canSubmit = computed(() => {
   return name.value.trim() && phone.value.trim();
 });
+
+function goBack() {
+  navigateToTab('/tabs/clients');
+}
 
 onMounted(() => {
   const id = route.params.id as string;
@@ -192,7 +198,7 @@ async function handleSubmit() {
       notes: notes.value.trim() || undefined,
     });
 
-    router.push('/tabs/clients');
+    navigateToTab('/tabs/clients');
   } catch (err: any) {
     console.error('Error updating client:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
@@ -223,7 +229,7 @@ async function handleDelete() {
 
           try {
             await deleteClient(clientId.value);
-            router.push('/tabs/clients');
+            navigateToTab('/tabs/clients');
           } catch (err: any) {
             console.error('Error deleting client:', err);
             deleting.value = false;

@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-deprecated-slot-attribute -->
 <template>
-  <IonPage>
+  <IonPage @ionViewWillEnter="onViewWillEnter">
     <IonHeader>
       <IonToolbar>
         <IonTitle>Servicios</IonTitle>
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -94,6 +94,7 @@ const services = ref<Service[]>([]);
 const loading = ref(true);
 const error = ref('');
 const salonId = ref('');
+const isMounted = ref(true);
 
 async function loadSalonId(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -123,6 +124,10 @@ async function loadSalonId(): Promise<string | null> {
 }
 
 async function loadServices() {
+  if (!isMounted.value) {
+    return;
+  }
+
   loading.value = true;
   error.value = '';
 
@@ -130,19 +135,27 @@ async function loadServices() {
     if (!salonId.value) {
       const id = await loadSalonId();
       if (!id) {
-        error.value = 'No se encontró el salón. Por favor inicia sesión nuevamente.';
-        loading.value = false;
+        if (isMounted.value) {
+          error.value = 'No se encontró el salón. Por favor inicia sesión nuevamente.';
+          loading.value = false;
+        }
         return;
       }
       salonId.value = id;
     }
 
+    if (!isMounted.value) return;
+
     services.value = await getServicesBySalonId(salonId.value);
   } catch (err: any) {
     console.error('Error loading services:', err);
-    error.value = err.message || 'Error al cargar los servicios';
+    if (isMounted.value) {
+      error.value = err.message || 'Error al cargar los servicios';
+    }
   } finally {
-    loading.value = false;
+    if (isMounted.value) {
+      loading.value = false;
+    }
   }
 }
 
@@ -177,15 +190,27 @@ onMounted(() => {
   loadServices();
 });
 
-// Recargar servicios cuando se vuelve a esta ruta (desde editar/crear)
+// Watch for route changes to reload services when returning to this page
 watch(
-  () => route.name,
-  (newName, oldName) => {
-    if (newName === 'Services' && oldName && (oldName === 'EditService' || oldName === 'NewService')) {
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/tabs/services' && salonId.value && isMounted.value) {
       loadServices();
     }
   }
 );
+
+// Ionic lifecycle hook: called every time the page is about to enter
+function onViewWillEnter() {
+  if (salonId.value && isMounted.value) {
+    loadServices();
+  }
+}
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  isMounted.value = false;
+});
 </script>
 
 <style scoped>

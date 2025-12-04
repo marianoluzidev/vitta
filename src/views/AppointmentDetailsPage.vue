@@ -4,7 +4,9 @@
     <IonHeader>
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton default-href="/tabs/agenda"></IonBackButton>
+          <IonButton @click="goBack">
+            <IonIcon :icon="arrowBack" slot="icon-only"></IonIcon>
+          </IonButton>
         </IonButtons>
         <IonTitle>Detalle del turno</IonTitle>
       </IonToolbar>
@@ -20,7 +22,7 @@
         <IonText color="danger">
           <h2>{{ errorMessage }}</h2>
         </IonText>
-        <IonButton expand="block" @click="router.replace({ name: 'Agenda' })">
+        <IonButton expand="block" @click="goBack">
           Volver al inicio
         </IonButton>
       </div>
@@ -153,7 +155,7 @@ import {
   IonTitle,
   IonContent,
   IonButtons,
-  IonBackButton,
+  IonIcon,
   IonItem,
   IonLabel,
   IonButton,
@@ -173,6 +175,8 @@ import {
 } from '@/services/appointmentsService';
 import { getEmployeesBySalonId, type Employee } from '@/services/employeesService';
 import { getServicesBySalonId, type Service } from '@/services/servicesService';
+import { navigateToTab } from '@/utils/navigation';
+import { arrowBack } from 'ionicons/icons';
 
 const router = useRouter();
 const route = useRoute();
@@ -320,12 +324,16 @@ async function handleDelete() {
   updatingStatus.value = true;
   try {
     await deleteAppointment(appointment.value.id);
-    router.replace({ name: 'Agenda' });
+    navigateToTab('/tabs/agenda', 100);
   } catch (err) {
     console.error('Error deleting appointment:', err);
     errorMessage.value = 'Error al eliminar el turno';
     updatingStatus.value = false;
   }
+}
+
+function goBack() {
+  navigateToTab('/tabs/agenda');
 }
 
 function goToEdit() {

@@ -95,7 +95,7 @@
         </div>
   
         <!-- Floating Action Button --><!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
-        <IonFab vertical="bottom" horizontal="end" slot="fixed">
+        <IonFab vertical="bottom" horizontal="end">
           <IonFabButton @click="goToCreateAppointment">
             <IonIcon :icon="add" />
           </IonFabButton>

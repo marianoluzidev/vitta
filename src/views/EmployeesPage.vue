@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-deprecated-slot-attribute -->
 <template>
-  <IonPage>
+  <IonPage @ionViewWillEnter="onViewWillEnter">
     <IonHeader>
       <IonToolbar>
         <IonTitle>Empleados</IonTitle>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -95,6 +95,7 @@ const employees = ref<Employee[]>([]);
 const loading = ref(true);
 const error = ref('');
 const salonId = ref('');
+const isMounted = ref(true);
 
 async function loadSalonId(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -124,6 +125,10 @@ async function loadSalonId(): Promise<string | null> {
 }
 
 async function loadEmployees() {
+  if (!isMounted.value) {
+    return;
+  }
+
   loading.value = true;
   error.value = '';
 
@@ -131,19 +136,27 @@ async function loadEmployees() {
     if (!salonId.value) {
       const id = await loadSalonId();
       if (!id) {
-        error.value = 'No se encontró el salón. Por favor inicia sesión nuevamente.';
-        loading.value = false;
+        if (isMounted.value) {
+          error.value = 'No se encontró el salón. Por favor inicia sesión nuevamente.';
+          loading.value = false;
+        }
         return;
       }
       salonId.value = id;
     }
 
+    if (!isMounted.value) return;
+
     employees.value = await getEmployeesBySalonId(salonId.value);
   } catch (err: any) {
     console.error('Error loading employees:', err);
-    error.value = err.message || 'Error al cargar los empleados';
+    if (isMounted.value) {
+      error.value = err.message || 'Error al cargar los empleados';
+    }
   } finally {
-    loading.value = false;
+    if (isMounted.value) {
+      loading.value = false;
+    }
   }
 }
 
@@ -159,16 +172,27 @@ onMounted(() => {
   loadEmployees();
 });
 
-// Recargar empleados cuando se vuelve a esta ruta (desde editar/crear)
+// Watch for route changes to reload employees when returning to this page
 watch(
-  () => route.name,
-  (newName, oldName) => {
-    // Si venimos de editar o crear empleado, recargar la lista
-    if (newName === 'Employees' && oldName && (oldName === 'EditEmployee' || oldName === 'NewEmployee')) {
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/tabs/employees' && salonId.value && isMounted.value) {
       loadEmployees();
     }
   }
 );
+
+// Ionic lifecycle hook: called every time the page is about to enter
+function onViewWillEnter() {
+  if (salonId.value && isMounted.value) {
+    loadEmployees();
+  }
+}
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  isMounted.value = false;
+});
 </script>
 
 <style scoped>

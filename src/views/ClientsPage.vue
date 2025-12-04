@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-deprecated-slot-attribute -->
 <template>
-  <IonPage>
+  <IonPage @ionViewWillEnter="onViewWillEnter">
     <IonHeader>
       <IonToolbar>
         <IonTitle>Clientes</IonTitle>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -95,6 +95,7 @@ const clients = ref<Client[]>([]);
 const loading = ref(true);
 const error = ref('');
 const salonId = ref('');
+const isMounted = ref(true);
 
 async function loadSalonId(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -124,9 +125,11 @@ async function loadSalonId(): Promise<string | null> {
 }
 
 async function loadClients() {
-  if (!salonId.value) {
-    error.value = 'No se encontró el salón';
-    loading.value = false;
+  if (!salonId.value || !isMounted.value) {
+    if (!salonId.value) {
+      error.value = 'No se encontró el salón';
+      loading.value = false;
+    }
     return;
   }
 
@@ -137,9 +140,13 @@ async function loadClients() {
     clients.value = await getClientsBySalonId(salonId.value);
   } catch (err: any) {
     console.error('Error loading clients:', err);
-    error.value = err.message || 'Error al cargar los clientes';
+    if (isMounted.value) {
+      error.value = err.message || 'Error al cargar los clientes';
+    }
   } finally {
-    loading.value = false;
+    if (isMounted.value) {
+      loading.value = false;
+    }
   }
 }
 
@@ -167,11 +174,23 @@ onMounted(async () => {
 watch(
   () => route.path,
   (newPath) => {
-      if (newPath === '/tabs/clients' && salonId.value) {
+    if (newPath === '/tabs/clients' && salonId.value && isMounted.value) {
       loadClients();
     }
   }
 );
+
+// Ionic lifecycle hook: called every time the page is about to enter
+function onViewWillEnter() {
+  if (salonId.value && isMounted.value) {
+    loadClients();
+  }
+}
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  isMounted.value = false;
+});
 </script>
 
 <style scoped>

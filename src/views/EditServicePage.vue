@@ -4,7 +4,9 @@
     <IonHeader>
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton default-href="/tabs/services"></IonBackButton>
+          <IonButton @click="goBack">
+            <IonIcon :icon="arrowBack" slot="icon-only"></IonIcon>
+          </IonButton>
         </IonButtons>
         <IonTitle>Editar servicio</IonTitle>
         <IonButtons slot="end">
@@ -98,7 +100,6 @@ import {
   IonTitle,
   IonContent,
   IonButtons,
-  IonBackButton,
   IonButton,
   IonIcon,
   IonItem,
@@ -108,7 +109,8 @@ import {
   IonText,
   alertController,
 } from '@ionic/vue';
-import { trashOutline, alertCircleOutline } from 'ionicons/icons';
+import { trashOutline, alertCircleOutline, arrowBack } from 'ionicons/icons';
+import { navigateToTab } from '@/utils/navigation';
 import {
   getServiceById,
   updateService,
@@ -118,6 +120,10 @@ import {
 
 const router = useRouter();
 const route = useRoute();
+
+function goBack() {
+  navigateToTab('/tabs/services');
+}
 
 const serviceId = ref<string>('');
 const name = ref('');
@@ -188,7 +194,7 @@ async function handleSubmit() {
       price: price.value,
     });
 
-    router.push('/tabs/services');
+    navigateToTab('/tabs/services');
   } catch (err: any) {
     console.error('Error updating service:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
@@ -219,7 +225,7 @@ async function handleDelete() {
 
           try {
             await deleteService(serviceId.value);
-            router.push('/tabs/services');
+            navigateToTab('/tabs/services');
           } catch (err: any) {
             console.error('Error deleting service:', err);
             deleting.value = false;

@@ -199,6 +199,7 @@ import { createAppointment, checkOverlappingAppointments, type CreateAppointment
 import { getEmployeesBySalonId, type Employee } from '@/services/employeesService';
 import { getServicesBySalonId, type Service } from '@/services/servicesService';
 import { getClientsBySalonId, type Client } from '@/services/clientsService';
+import { navigateToTab } from '@/utils/navigation';
 
 const router = useRouter();
 const route = useRoute();
@@ -449,13 +450,9 @@ async function handleSubmit() {
     // Reset form after successful creation
     resetForm();
     
-    // Navigate back to agenda tab using replace to avoid navigation stack issues
+    // Navigate back to agenda tab safely
     await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 100));
-    router.replace({ name: 'Agenda' }).catch(() => {
-      // Fallback if navigation fails
-      window.location.href = '/tabs/agenda';
-    });
+    navigateToTab('/tabs/agenda', 100);
   } catch (err: any) {
     console.error('Error creating appointment:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {

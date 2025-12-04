@@ -97,6 +97,7 @@ import { auth, db } from '@/firebase/app';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createClient, type CreateClientPayload } from '@/services/clientsService';
+import { navigateToTab } from '@/utils/navigation';
 
 const router = useRouter();
 
@@ -173,7 +174,7 @@ async function handleSubmit() {
     };
 
     await createClient(payload);
-    router.push('/tabs/clients');
+    navigateToTab('/tabs/clients');
   } catch (err: any) {
     console.error('Error creating client:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {

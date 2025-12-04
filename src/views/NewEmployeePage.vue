@@ -97,6 +97,7 @@ import { auth, db } from '@/firebase/app';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createEmployee, type CreateEmployeePayload } from '@/services/employeesService';
+import { navigateToTab } from '@/utils/navigation';
 
 const router = useRouter();
 
@@ -169,7 +170,7 @@ async function handleSubmit() {
     };
 
     await createEmployee(payload);
-    router.push('/tabs/employees');
+    navigateToTab('/tabs/employees');
   } catch (err: any) {
     console.error('Error creating employee:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {

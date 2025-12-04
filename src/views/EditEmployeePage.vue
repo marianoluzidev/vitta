@@ -4,7 +4,9 @@
     <IonHeader>
       <IonToolbar>
         <IonButtons slot="start">
-          <IonBackButton default-href="/tabs/employees"></IonBackButton>
+          <IonButton @click="goBack">
+            <IonIcon :icon="arrowBack" slot="icon-only"></IonIcon>
+          </IonButton>
         </IonButtons>
         <IonTitle>Editar empleado</IonTitle>
         <IonButtons slot="end">
@@ -104,7 +106,6 @@ import {
   IonTitle,
   IonContent,
   IonButtons,
-  IonBackButton,
   IonButton,
   IonIcon,
   IonItem,
@@ -115,7 +116,8 @@ import {
   IonText,
   alertController,
 } from '@ionic/vue';
-import { trashOutline, alertCircleOutline } from 'ionicons/icons';
+import { trashOutline, alertCircleOutline, arrowBack } from 'ionicons/icons';
+import { navigateToTab } from '@/utils/navigation';
 import {
   getEmployeeById,
   updateEmployee,
@@ -125,6 +127,10 @@ import {
 
 const router = useRouter();
 const route = useRoute();
+
+function goBack() {
+  navigateToTab('/tabs/employees');
+}
 
 const employeeId = ref<string>('');
 const name = ref('');
@@ -188,7 +194,7 @@ async function handleSubmit() {
       notes: notes.value || undefined,
     });
 
-    router.push('/tabs/employees');
+    navigateToTab('/tabs/employees');
   } catch (err: any) {
     console.error('Error updating employee:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
@@ -219,7 +225,7 @@ async function handleDelete() {
 
           try {
             await deleteEmployee(employeeId.value);
-            router.push('/tabs/employees');
+            navigateToTab('/tabs/employees');
           } catch (err: any) {
             console.error('Error deleting employee:', err);
             deleting.value = false;

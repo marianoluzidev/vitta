@@ -90,6 +90,7 @@ import { auth, db } from '@/firebase/app';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createService, type CreateServicePayload } from '@/services/servicesService';
+import { navigateToTab } from '@/utils/navigation';
 
 const router = useRouter();
 
@@ -170,7 +171,7 @@ async function handleSubmit() {
     };
 
     await createService(payload);
-    router.push('/tabs/services');
+    navigateToTab('/tabs/services');
   } catch (err: any) {
     console.error('Error creating service:', err);
     if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
