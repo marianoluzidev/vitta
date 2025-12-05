@@ -34,29 +34,35 @@ import '@ionic/vue/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 
-import { applyTheme, themes, type ThemeObject } from './theme/applyTheme';
+import { applyTheme, applyThemeDefinition, themes, type ThemeDefinition } from './theme/applyTheme';
 
 // Apply theme from localStorage or use default
 const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
+const savedCustomTheme = localStorage.getItem('customTheme');
+
+if (savedCustomTheme) {
   try {
-    // Try to parse as JSON (dynamic theme)
-    const parsed = JSON.parse(savedTheme);
-    if (parsed && typeof parsed === 'object' && parsed['--ion-color-primary']) {
-      applyTheme(parsed as ThemeObject);
-    } else if (savedTheme in themes) {
-      // It's a theme name
-      applyTheme(savedTheme as keyof typeof themes);
+    // Custom theme from logo
+    const customTheme = JSON.parse(savedCustomTheme) as ThemeDefinition;
+    if (customTheme && customTheme['--ion-color-primary']) {
+      applyThemeDefinition(customTheme);
     } else {
       applyTheme('vitta');
     }
   } catch {
-    // Not JSON, try as theme name
-    if (savedTheme in themes) {
+    // Fallback if parsing fails
+    if (savedTheme && savedTheme in themes) {
       applyTheme(savedTheme as keyof typeof themes);
     } else {
       applyTheme('vitta');
     }
+  }
+} else if (savedTheme) {
+  if (savedTheme in themes) {
+    // Predefined theme
+    applyTheme(savedTheme as keyof typeof themes);
+  } else {
+    applyTheme('vitta');
   }
 } else {
   applyTheme('vitta');

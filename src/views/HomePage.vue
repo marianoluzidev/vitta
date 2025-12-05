@@ -132,7 +132,7 @@ import { auth, db } from '@/firebase/app';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { themes } from '@/theme/themes';
-import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
+import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/applyTheme';
   
   // Types
   import type { AppointmentStatus } from '@/services/appointmentsService';
@@ -229,16 +229,19 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
           selectedSalonId.value = salonDoc.id;
           
           // Load and apply theme from Firestore
-          const theme = salonData.theme;
-          if (theme) {
-            // Check if it's a theme name (string) or a theme object
+          // Priority: customTheme > theme (string)
+          if (salonData.customTheme && typeof salonData.customTheme === 'object') {
+            // Custom theme from logo
+            const customTheme = salonData.customTheme as ThemeDefinition;
+            applyThemeDefinition(customTheme);
+            localStorage.setItem('theme', 'custom-logo');
+            localStorage.setItem('customTheme', JSON.stringify(customTheme));
+          } else if (salonData.theme) {
+            const theme = salonData.theme;
             if (typeof theme === 'string' && theme in themes) {
+              // Predefined theme
               applyTheme(theme as keyof typeof themes);
               localStorage.setItem('theme', theme);
-            } else if (typeof theme === 'object' && theme !== null) {
-              // It's a dynamic theme object
-              applyTheme(theme as ThemeObject);
-              localStorage.setItem('theme', JSON.stringify(theme));
             } else {
               // Fallback to vitta if theme is invalid
               applyTheme('vitta');
@@ -559,7 +562,7 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
   <style scoped>
   .logo-title {
     font-weight: 600;
-    color: #08b8a4;
+    color: var(--ion-color-primary);
     font-size: 1.2rem;
     margin-left: 0px;
     display: flex;
@@ -588,7 +591,7 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .view-mode-segment {
@@ -616,7 +619,7 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
   .appointment-time {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #08b8a4;
+    color: var(--ion-color-primary);
     margin-bottom: 8px;
   }
   
@@ -636,13 +639,14 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .service-name {
     margin: 0;
     font-size: 0.875rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   .appointment-meta {
@@ -654,7 +658,8 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
   
   .employee-name {
     font-size: 0.75rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   .status-badge {
@@ -673,7 +678,8 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
   
   .empty-icon {
     font-size: 64px;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.5;
     margin-bottom: 24px;
   }
   
@@ -681,13 +687,14 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
     margin: 0 0 8px 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .empty-subtitle {
     margin: 0;
     font-size: 0.875rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
 
   .loading-appointments {
@@ -701,17 +708,18 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
 
   .loading-appointments p {
     margin-top: 16px;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   ion-fab-button {
-    --background: #08b8a4;
-    --background-activated: #06a894;
-    --background-hover: #07c4b0;
+    --background: var(--ion-color-primary);
+    --background-activated: var(--ion-color-primary-shade);
+    --background-hover: var(--ion-color-primary-tint);
   }
   .logo-title {
   font-weight: 600;
-  color: #08b8a4;
+  color: var(--ion-color-primary);
   font-size: 1.2rem;
   display: flex;
   flex-direction: column;
@@ -720,9 +728,10 @@ import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
 }
 
 .salon-name {
-  font-weight: 400;
+  font-weight: 600;
   font-size: 0.8rem;
-  color: #6a6a6a;
+  color: var(--ion-text-color);
+  opacity: 0.7;
 }
 
 .version {

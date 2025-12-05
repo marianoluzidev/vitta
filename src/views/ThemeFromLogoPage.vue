@@ -88,7 +88,8 @@ import {
 } from '@ionic/vue'
 import { imageOutline, checkmarkCircleOutline } from 'ionicons/icons'
 import ColorThief from 'colorthief'
-import { applyTheme, type ThemeObject } from '@/theme/applyTheme'
+import { applyThemeDefinition, type ThemeDefinition } from '@/theme/applyTheme'
+import { darkenColor, lightenColor, getContrastColor } from '@/theme/utils'
 import { auth, db } from '@/firebase/app'
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -163,26 +164,43 @@ async function applyExtractedTheme() {
 
   const primaryColor = extractedColors.value[0]
   const secondaryColor = extractedColors.value[1]
+  const background = '#ffffff'
+  const textColor = '#222222'
 
-  const newTheme: ThemeObject = {
+  // Create complete theme definition
+  const newTheme: ThemeDefinition = {
     '--ion-color-primary': primaryColor,
+    '--ion-color-primary-contrast': getContrastColor(primaryColor),
+    '--ion-color-primary-shade': darkenColor(primaryColor, 0.15),
+    '--ion-color-primary-tint': lightenColor(primaryColor, 0.15),
     '--ion-color-secondary': secondaryColor,
-    '--ion-background-color': '#ffffff',
-    '--ion-text-color': '#222222',
+    '--ion-color-secondary-contrast': getContrastColor(secondaryColor),
+    '--ion-color-secondary-shade': darkenColor(secondaryColor, 0.15),
+    '--ion-color-secondary-tint': lightenColor(secondaryColor, 0.15),
+    '--ion-background-color': background,
+    '--ion-text-color': textColor,
+    '--ion-toolbar-background': primaryColor,
+    '--ion-toolbar-color': getContrastColor(primaryColor),
+    '--ion-tab-bar-background': background,
+    '--ion-tab-bar-color': textColor,
+    '--ion-item-background': background,
+    '--ion-card-background': background,
   }
 
   // Apply theme
-  applyTheme(newTheme)
+  applyThemeDefinition(newTheme)
 
   // Save to localStorage
-  localStorage.setItem('theme', JSON.stringify(newTheme))
+  localStorage.setItem('theme', 'custom-logo')
+  localStorage.setItem('customTheme', JSON.stringify(newTheme))
 
   // Save to Firestore
   if (salonId.value) {
     try {
       const salonDoc = doc(db, 'salons', salonId.value)
       await updateDoc(salonDoc, {
-        theme: newTheme,
+        customTheme: newTheme,
+        theme: 'custom-logo',
       })
     } catch (error) {
       console.error('Error updating theme in Firestore:', error)

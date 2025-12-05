@@ -70,7 +70,11 @@ onMounted(() => {
 
         // Load theme from Firestore if available
         const salonData = salonDoc.data()
-        if (salonData.theme && salonData.theme in themes) {
+        // If customTheme exists, don't override with predefined theme
+        if (salonData.customTheme) {
+          // Custom theme is active, show as "custom-logo" or keep current selection
+          // Don't change currentTheme.value here
+        } else if (salonData.theme && salonData.theme in themes) {
           const theme = salonData.theme as keyof typeof themes
           currentTheme.value = theme
           applyTheme(theme)
@@ -95,7 +99,13 @@ async function onThemeChange(ev: CustomEvent) {
   if (salonId.value) {
     try {
       const salonDoc = doc(db, 'salons', salonId.value)
-      await updateDoc(salonDoc, { theme: newTheme })
+      // Clear customTheme when switching to predefined theme
+      await updateDoc(salonDoc, {
+        theme: newTheme,
+        customTheme: null,
+      })
+      // Clear customTheme from localStorage
+      localStorage.removeItem('customTheme')
     } catch (error) {
       console.error('Error updating theme in Firestore:', error)
     }
@@ -107,6 +117,7 @@ function labelForTheme(key: keyof typeof themes): string {
   if (key === 'lavanda') return 'Lavanda'
   if (key === 'rosa') return 'Rosa Soft'
   if (key === 'dark') return 'Dark'
+  if (key === 'aquaFull') return 'Verde completo (fondo)'
   return key
 }
 </script>
