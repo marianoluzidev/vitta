@@ -729,7 +729,7 @@ import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/
 
 .salon-name {
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: var(--ion-text-color);
   opacity: 0.7;
 }

@@ -61,7 +61,7 @@
         <IonButton
           expand="block"
           @click="applyExtractedTheme"
-          :disabled="extractedColors.length < 2"
+          :disabled="!generatedTheme"
         >
           <IonIcon :icon="checkmarkCircleOutline" slot="start"></IonIcon>
           Aplicar como tema
@@ -87,9 +87,8 @@ import {
   IonButtons,
 } from '@ionic/vue'
 import { imageOutline, checkmarkCircleOutline } from 'ionicons/icons'
-import ColorThief from 'colorthief'
 import { applyThemeDefinition, type ThemeDefinition } from '@/theme/applyTheme'
-import { darkenColor, lightenColor, getContrastColor } from '@/theme/utils'
+import { generateFullThemeFromImage } from '@/theme/themeGenerator'
 import { auth, db } from '@/firebase/app'
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -100,6 +99,7 @@ const imagePreview = ref<string>('')
 const extractedColors = ref<string[]>([])
 const extracting = ref(false)
 const salonId = ref<string>('')
+const generatedTheme = ref<ThemeDefinition | null>(null)
 
 onMounted(() => {
   // Load salon ID
@@ -138,60 +138,47 @@ function handleFileSelect(event: Event) {
   reader.readAsDataURL(file)
 }
 
-function onImageLoad() {
+async function onImageLoad() {
   if (!previewImage.value) return
 
   extracting.value = true
   extractedColors.value = []
+  generatedTheme.value = null
 
   try {
-    const colorThief = new ColorThief()
-    const palette = colorThief.getPalette(previewImage.value, 5) // 5 colores principales
-    const hexColors = palette.map((rgb: number[]) => {
-      const [r, g, b] = rgb
-      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
-    })
-    extractedColors.value = hexColors
+    // Generate full theme using Vibrant.js
+    const theme = await generateFullThemeFromImage(previewImage.value)
+    generatedTheme.value = theme
+
+    // Extract colors for display from the generated theme
+    const colors = [
+      theme['--ion-color-primary'],
+      theme['--ion-color-secondary'],
+      theme['--ion-background-color'],
+      theme['--ion-toolbar-background'],
+      theme['--ion-color-primary-tint'],
+    ].filter(Boolean) as string[]
+
+    extractedColors.value = colors
   } catch (error) {
-    console.error('Error extracting colors:', error)
+    console.error('Error generating theme from image:', error)
+    extracting.value = false
   } finally {
     extracting.value = false
   }
 }
 
 async function applyExtractedTheme() {
-  if (extractedColors.value.length < 2) return
+  if (!generatedTheme.value) return
 
-  const primaryColor = extractedColors.value[0]
-  const secondaryColor = extractedColors.value[1]
-  const background = '#ffffff'
-  const textColor = '#222222'
-
-  // Create complete theme definition
-  const newTheme: ThemeDefinition = {
-    '--ion-color-primary': primaryColor,
-    '--ion-color-primary-contrast': getContrastColor(primaryColor),
-    '--ion-color-primary-shade': darkenColor(primaryColor, 0.15),
-    '--ion-color-primary-tint': lightenColor(primaryColor, 0.15),
-    '--ion-color-secondary': secondaryColor,
-    '--ion-color-secondary-contrast': getContrastColor(secondaryColor),
-    '--ion-color-secondary-shade': darkenColor(secondaryColor, 0.15),
-    '--ion-color-secondary-tint': lightenColor(secondaryColor, 0.15),
-    '--ion-background-color': background,
-    '--ion-text-color': textColor,
-    '--ion-toolbar-background': primaryColor,
-    '--ion-toolbar-color': getContrastColor(primaryColor),
-    '--ion-tab-bar-background': background,
-    '--ion-tab-bar-color': textColor,
-    '--ion-item-background': background,
-    '--ion-card-background': background,
-  }
+  const newTheme = generatedTheme.value
 
   // Apply theme
   applyThemeDefinition(newTheme)
 
   // Save to localStorage
   localStorage.setItem('theme', 'custom-logo')
+  localStorage.setItem('themeSource', 'logo')
   localStorage.setItem('customTheme', JSON.stringify(newTheme))
 
   // Save to Firestore

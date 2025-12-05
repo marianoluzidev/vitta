@@ -23,6 +23,7 @@
     "colorthief": "^2.6.0",
     "firebase": "^12.6.0",
     "ionicons": "^7.0.0",
+    "node-vibrant": "^4.0.3",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"
   },

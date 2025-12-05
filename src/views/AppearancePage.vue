@@ -104,8 +104,9 @@ async function onThemeChange(ev: CustomEvent) {
         theme: newTheme,
         customTheme: null,
       })
-      // Clear customTheme from localStorage
+      // Clear customTheme and themeSource from localStorage
       localStorage.removeItem('customTheme')
+      localStorage.removeItem('themeSource')
     } catch (error) {
       console.error('Error updating theme in Firestore:', error)
     }
