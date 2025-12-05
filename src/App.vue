@@ -44,6 +44,12 @@
             </template>
             <IonLabel>Apariencia</IonLabel>
           </IonItem>
+          <IonItem button @click="navigateTo('/theme-from-logo')">
+            <template #start>
+              <IonIcon :icon="imageOutline"></IonIcon>
+            </template>
+            <IonLabel>Tema desde logo</IonLabel>
+          </IonItem>
         </IonList>
       </IonContent>
     </IonMenu>
@@ -75,6 +81,7 @@ import {
   cutOutline,
   ellipsisHorizontalOutline,
   colorPaletteOutline,
+  imageOutline,
 } from 'ionicons/icons'
 
 const router = useRouter()

@@ -132,7 +132,7 @@ import { auth, db } from '@/firebase/app';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { themes } from '@/theme/themes';
-import { applyTheme } from '@/theme/applyTheme';
+import { applyTheme, type ThemeObject } from '@/theme/applyTheme';
   
   // Types
   import type { AppointmentStatus } from '@/services/appointmentsService';
@@ -229,12 +229,23 @@ import { applyTheme } from '@/theme/applyTheme';
           selectedSalonId.value = salonDoc.id;
           
           // Load and apply theme from Firestore
-          const theme = salonData.theme || 'vitta';
-          if (theme in themes) {
-            applyTheme(theme as keyof typeof themes);
-            localStorage.setItem('theme', theme);
+          const theme = salonData.theme;
+          if (theme) {
+            // Check if it's a theme name (string) or a theme object
+            if (typeof theme === 'string' && theme in themes) {
+              applyTheme(theme as keyof typeof themes);
+              localStorage.setItem('theme', theme);
+            } else if (typeof theme === 'object' && theme !== null) {
+              // It's a dynamic theme object
+              applyTheme(theme as ThemeObject);
+              localStorage.setItem('theme', JSON.stringify(theme));
+            } else {
+              // Fallback to vitta if theme is invalid
+              applyTheme('vitta');
+              localStorage.setItem('theme', 'vitta');
+            }
           } else {
-            // Fallback to vitta if theme is invalid
+            // No theme in Firestore, use vitta
             applyTheme('vitta');
             localStorage.setItem('theme', 'vitta');
           }
@@ -551,6 +562,9 @@ import { applyTheme } from '@/theme/applyTheme';
     color: #08b8a4;
     font-size: 1.2rem;
     margin-left: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   
   .date-selector-section {
@@ -702,6 +716,7 @@ import { applyTheme } from '@/theme/applyTheme';
   display: flex;
   flex-direction: column;
   line-height: 1.2;
+  justify-content: center;
 }
 
 .salon-name {

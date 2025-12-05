@@ -1,7 +1,7 @@
 {
   "name": "vitta",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,6 +20,7 @@
     "@capacitor/status-bar": "7.0.3",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
+    "colorthief": "^2.6.0",
     "firebase": "^12.6.0",
     "ionicons": "^7.0.0",
     "vue": "^3.3.0",

@@ -6,6 +6,7 @@ import EmployeesPage from '@/views/EmployeesPage.vue'
 import ServicesPage from '@/views/ServicesPage.vue'
 import MorePage from '@/views/MorePage.vue'
 import AppearancePage from '@/views/AppearancePage.vue'
+import ThemeFromLogoPage from '@/views/ThemeFromLogoPage.vue'
 
 import OnboardingPage from '@/views/OnboardingPage.vue'
 import LoginPage from '@/views/LoginPage.vue'
@@ -71,6 +72,11 @@ const routes = [
     path: '/appearance',
     name: 'Appearance',
     component: AppearancePage,
+  },
+  {
+    path: '/theme-from-logo',
+    name: 'ThemeFromLogo',
+    component: ThemeFromLogoPage,
   },
 
   // Rutas para crear nuevos elementos
