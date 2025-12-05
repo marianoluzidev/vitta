@@ -34,6 +34,16 @@ import '@ionic/vue/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 
+import { applyTheme, themes } from './theme/applyTheme';
+
+// Apply theme from localStorage or use default
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme && savedTheme in themes) {
+  applyTheme(savedTheme as keyof typeof themes);
+} else {
+  applyTheme('vitta');
+}
+
 const app = createApp(App)
   .use(IonicVue)
   .use(router);
