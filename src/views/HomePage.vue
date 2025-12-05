@@ -1,108 +1,103 @@
 <!-- eslint-disable vue/no-deprecated-slot-attribute -->
 <template>
-    <IonPage @ionViewWillEnter="onViewWillEnter">
-        <IonHeader>
-            <IonToolbar>
-                <IonTitle class="logo-title">
-                Vitta
-                <span class="salon-name">{{ displaySalonName }}</span>
-                </IonTitle>
-            </IonToolbar>
-        </IonHeader>
-  
-      <IonContent :fullscreen="true">
-        <!-- Date Selector Section -->
-        <div class="date-selector-section">
-          <div class="date-navigation">
-            <IonButton fill="clear" @click="previousDay">
-                <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
-              <IonIcon :icon="chevronBackOutline" slot="icon-only" />
-            </IonButton>
-  
-            <div class="date-display">
-              <h2 class="date-text">{{ formattedDate }}</h2>
-            </div>
-  
-            <IonButton fill="clear" @click="nextDay">
-                <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
-              <IonIcon :icon="chevronForwardOutline" slot="icon-only" />
-            </IonButton>
+  <IonPage @ionViewWillEnter="onViewWillEnter">
+    <IonHeader>
+      <IonToolbar>
+        <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+        <IonButtons slot="start">
+          <IonMenuButton menu="main-menu"></IonMenuButton>
+        </IonButtons>
+        <IonTitle class="logo-title">
+          Vitta
+          <span class="salon-name">{{ displaySalonName }}</span>
+        </IonTitle>
+      </IonToolbar>
+    </IonHeader>
+
+    <IonContent :fullscreen="true">
+      <!-- Date Selector Section -->
+      <div class="date-selector-section">
+        <div class="date-navigation">
+          <IonButton fill="clear" @click="previousDay">
+            <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+            <IonIcon :icon="chevronBackOutline" slot="icon-only" />
+          </IonButton>
+
+          <div class="date-display">
+            <h2 class="date-text">{{ formattedDate }}</h2>
           </div>
-  
-          <!-- Segmented Control -->
-          <IonSegment v-model="viewMode" class="view-mode-segment">
-            <IonSegmentButton value="day">
-              <IonLabel>Día</IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="week">
-              <IonLabel>Semana</IonLabel>
-            </IonSegmentButton>
-          </IonSegment>
-        </div>
-  
-        <!-- Loading Appointments -->
-        <div v-if="loadingAppointments" class="loading-appointments">
-          <IonSpinner name="crescent"></IonSpinner>
-          <p>Cargando turnos...</p>
+
+          <IonButton fill="clear" @click="nextDay">
+            <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+            <IonIcon :icon="chevronForwardOutline" slot="icon-only" />
+          </IonButton>
         </div>
 
-        <!-- Appointments List -->
-        <div v-else-if="filteredAppointments.length > 0" class="appointments-container">
-          <IonList>
-            <IonItem
-              v-for="appointment in filteredAppointments"
-              :key="appointment.id"
-              class="appointment-item"
-              lines="full"
-              button
-              @click="goToAppointmentDetails(appointment.id)"
-            >
-              <div class="appointment-content">
-                <div class="appointment-time">
-                  {{ formatTime(appointment.start) }} - {{ formatTime(appointment.end) }}
+        <!-- Segmented Control -->
+        <IonSegment v-model="viewMode" class="view-mode-segment">
+          <IonSegmentButton value="day">
+            <IonLabel>Día</IonLabel>
+          </IonSegmentButton>
+          <IonSegmentButton value="week">
+            <IonLabel>Semana</IonLabel>
+          </IonSegmentButton>
+        </IonSegment>
+      </div>
+
+      <!-- Loading Appointments -->
+      <div v-if="loadingAppointments" class="loading-appointments">
+        <IonSpinner name="crescent"></IonSpinner>
+        <p>Cargando turnos...</p>
+      </div>
+
+      <!-- Appointments List -->
+      <div v-else-if="filteredAppointments.length > 0" class="appointments-container">
+        <IonList>
+          <IonItem v-for="appointment in filteredAppointments" :key="appointment.id" class="appointment-item"
+            lines="full" button @click="goToAppointmentDetails(appointment.id)">
+            <div class="appointment-content">
+              <div class="appointment-time">
+                {{ formatTime(appointment.start) }} - {{ formatTime(appointment.end) }}
+              </div>
+
+              <div class="appointment-details">
+                <div class="appointment-main">
+                  <h3 class="client-name">{{ appointment.clientName }}</h3>
+                  <p v-if="appointment.serviceNames && appointment.serviceNames.length > 0" class="service-name">
+                    {{ formatServiceSummary(appointment.serviceNames) }}
+                  </p>
+                  <p v-else class="service-name">Sin servicios</p>
                 </div>
-  
-                <div class="appointment-details">
-                  <div class="appointment-main">
-                    <h3 class="client-name">{{ appointment.clientName }}</h3>
-                    <p v-if="appointment.serviceNames && appointment.serviceNames.length > 0" class="service-name">
-                      {{ formatServiceSummary(appointment.serviceNames) }}
-                    </p>
-                    <p v-else class="service-name">Sin servicios</p>
-                  </div>
-  
-                  <div class="appointment-meta">
-                    <span v-if="appointment.employeeName" class="employee-name">{{ appointment.employeeName }}</span>
-                    <span v-else class="employee-name">Empleado no encontrado</span>
-                    <IonBadge
-                      :color="getStatusColor(appointment.status)"
-                      class="status-badge"
-                    >
-                      {{ getStatusLabel(appointment.status) }}
-                    </IonBadge>
-                  </div>
+
+                <div class="appointment-meta">
+                  <span v-if="appointment.employeeName" class="employee-name">{{ appointment.employeeName }}</span>
+                  <span v-else class="employee-name">Empleado no encontrado</span>
+                  <IonBadge :color="getStatusColor(appointment.status)" class="status-badge">
+                    {{ getStatusLabel(appointment.status) }}
+                  </IonBadge>
                 </div>
               </div>
-            </IonItem>
-          </IonList>
-        </div>
-  
-        <!-- Empty State -->
-        <div v-else class="empty-state">
-          <IonIcon :icon="calendarOutline" class="empty-icon" />
-          <h3 class="empty-title">Sin turnos para este día</h3>
-          <p class="empty-subtitle">Toca el botón + para crear un nuevo turno.</p>
-        </div>
-  
-        <!-- Floating Action Button --><!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
-        <IonFab vertical="bottom" horizontal="end">
-          <IonFabButton @click="goToCreateAppointment">
-            <IonIcon :icon="add" />
-          </IonFabButton>
-        </IonFab>
-      </IonContent>
-    </IonPage>
-  </template>
+            </div>
+          </IonItem>
+        </IonList>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <IonIcon :icon="calendarOutline" class="empty-icon" />
+        <h3 class="empty-title">Sin turnos para este día</h3>
+        <p class="empty-subtitle">Toca el botón + para crear un nuevo turno.</p>
+      </div>
+
+      <!-- Floating Action Button --><!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+      <IonFab vertical="bottom" horizontal="end">
+        <IonFabButton @click="goToCreateAppointment">
+          <IonIcon :icon="add" />
+        </IonFabButton>
+      </IonFab>
+    </IonContent>
+  </IonPage>
+</template>
   
   <script setup lang="ts">
   import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
@@ -124,6 +119,7 @@
   IonFab,
   IonFabButton,
   IonSpinner,
+  IonMenuButton,
 } from '@ionic/vue';
   import {
     chevronBackOutline,
@@ -535,7 +531,7 @@
     font-weight: 600;
     color: #08b8a4;
     font-size: 1.2rem;
-    margin-left: 8px;
+    margin-left: 0px;
   }
   
   .date-selector-section {

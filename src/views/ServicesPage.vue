@@ -3,7 +3,12 @@
   <IonPage @ionViewWillEnter="onViewWillEnter">
     <IonHeader>
       <IonToolbar>
+        <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+        <IonButtons slot="start">
+          <IonMenuButton menu="main-menu"></IonMenuButton>
+        </IonButtons>
         <IonTitle>Servicios</IonTitle>
+        <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
         <IonButtons slot="end">
           <IonButton @click="goToNewService" :disabled="loading">
             <IonIcon :icon="add" slot="icon-only"></IonIcon>
@@ -72,6 +77,7 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonMenuButton,
   IonContent,
   IonButtons,
   IonButton,

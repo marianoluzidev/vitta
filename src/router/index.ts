@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router'
-import TabsPage from '@/views/TabsPage.vue'
 
 import HomePage from '@/views/HomePage.vue'
 import ClientsPage from '@/views/ClientsPage.vue'
@@ -33,36 +32,48 @@ const routes = [
     component: RegisterOwnerPage,
   },
 
-  // Área principal con tabs
+  // Rutas principales con menú lateral
+  {
+    path: '/agenda',
+    name: 'Agenda',
+    component: HomePage,
+  },
+  {
+    path: '/clients',
+    name: 'Clients',
+    component: ClientsPage,
+  },
+  {
+    path: '/employees',
+    name: 'Employees',
+    component: EmployeesPage,
+  },
+  {
+    path: '/services',
+    name: 'Services',
+    component: ServicesPage,
+  },
+  
+  // Redirects legacy /tabs routes
   {
     path: '/tabs',
-    component: TabsPage,
-    children: [
-      {
-        path: '',
-        redirect: '/tabs/agenda',
-      },
-      {
-        path: 'agenda',
-        name: 'Agenda',
-        component: HomePage,
-      },
-      {
-        path: 'clients',
-        name: 'Clients',
-        component: ClientsPage,
-      },
-      {
-        path: 'employees',
-        name: 'Employees',
-        component: EmployeesPage,
-      },
-      {
-        path: 'services',
-        name: 'Services',
-        component: ServicesPage,
-      },
-    ],
+    redirect: '/agenda',
+  },
+  {
+    path: '/tabs/agenda',
+    redirect: '/agenda',
+  },
+  {
+    path: '/tabs/clients',
+    redirect: '/clients',
+  },
+  {
+    path: '/tabs/employees',
+    redirect: '/employees',
+  },
+  {
+    path: '/tabs/services',
+    redirect: '/services',
   },
 
   // Rutas que se abren "encima" de los tabs
