@@ -5,6 +5,7 @@ import ClientsPage from '@/views/ClientsPage.vue'
 import EmployeesPage from '@/views/EmployeesPage.vue'
 import ServicesPage from '@/views/ServicesPage.vue'
 import MorePage from '@/views/MorePage.vue'
+import AppearancePage from '@/views/AppearancePage.vue'
 
 import OnboardingPage from '@/views/OnboardingPage.vue'
 import LoginPage from '@/views/LoginPage.vue'
@@ -65,6 +66,11 @@ const routes = [
     path: '/more',
     name: 'More',
     component: MorePage,
+  },
+  {
+    path: '/appearance',
+    name: 'Appearance',
+    component: AppearancePage,
   },
 
   // Rutas para crear nuevos elementos
