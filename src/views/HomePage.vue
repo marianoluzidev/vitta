@@ -10,6 +10,7 @@
         <IonTitle class="logo-title">
           Vitta
           <span class="salon-name">{{ displaySalonName }}</span>
+          <span class="version">v{{ appVersion }}</span>
         </IonTitle>
       </IonToolbar>
     </IonHeader>
@@ -127,9 +128,11 @@
     calendarOutline,
     add,
   } from 'ionicons/icons';
-  import { auth, db } from '@/firebase/app';
-  import { collection, query, where, getDocs } from 'firebase/firestore';
-  import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/firebase/app';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { themes } from '@/theme/themes';
+import { applyTheme } from '@/theme/applyTheme';
   
   // Types
   import type { AppointmentStatus } from '@/services/appointmentsService';
@@ -149,6 +152,10 @@
     employeeName?: string;
   }
   
+  // App version (injected by Vite)
+  declare const __APP_VERSION__: string;
+  const appVersion = __APP_VERSION__;
+
   // State
   const router = useRouter();
   const route = useRoute();
@@ -220,6 +227,18 @@
           const salonData = salonDoc.data();
           selectedSalon.value = salonData.name || 'Sin nombre';
           selectedSalonId.value = salonDoc.id;
+          
+          // Load and apply theme from Firestore
+          const theme = salonData.theme || 'vitta';
+          if (theme in themes) {
+            applyTheme(theme as keyof typeof themes);
+            localStorage.setItem('theme', theme);
+          } else {
+            // Fallback to vitta if theme is invalid
+            applyTheme('vitta');
+            localStorage.setItem('theme', 'vitta');
+          }
+          
           // Load employees, services, and appointments after salon is loaded
           await Promise.all([
             loadEmployees(),
@@ -689,6 +708,13 @@
   font-weight: 400;
   font-size: 0.8rem;
   color: #6a6a6a;
+}
+
+.version {
+  font-weight: 300;
+  font-size: 0.7rem;
+  color: #999;
+  margin-left: 4px;
 }
 
   

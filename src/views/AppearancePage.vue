@@ -41,23 +41,65 @@ import {
 } from '@ionic/vue'
 import { themes } from '@/theme/themes'
 import { applyTheme } from '@/theme/applyTheme'
+import { auth, db } from '@/firebase/app'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
 
 const currentTheme = ref<keyof typeof themes>('vitta')
+const salonId = ref<string>('')
 
 onMounted(() => {
+  // Load theme from localStorage first (fallback)
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme && savedTheme in themes) {
     currentTheme.value = savedTheme as keyof typeof themes
   }
+
+  // Load salon ID
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return
+
+    try {
+      const salonsRef = collection(db, 'salons')
+      const q = query(salonsRef, where('ownerId', '==', user.uid))
+      const querySnapshot = await getDocs(q)
+
+      if (!querySnapshot.empty) {
+        const salonDoc = querySnapshot.docs[0]
+        salonId.value = salonDoc.id
+
+        // Load theme from Firestore if available
+        const salonData = salonDoc.data()
+        if (salonData.theme && salonData.theme in themes) {
+          const theme = salonData.theme as keyof typeof themes
+          currentTheme.value = theme
+          applyTheme(theme)
+          localStorage.setItem('theme', theme)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading salon:', error)
+    }
+  })
 })
 
-function onThemeChange(ev: CustomEvent) {
+async function onThemeChange(ev: CustomEvent) {
   const newTheme = ev.detail.value as keyof typeof themes
   if (!newTheme || !themes[newTheme]) return
 
   currentTheme.value = newTheme
   applyTheme(newTheme)
   localStorage.setItem('theme', newTheme)
+
+  // Update theme in Firestore
+  if (salonId.value) {
+    try {
+      const salonDoc = doc(db, 'salons', salonId.value)
+      await updateDoc(salonDoc, { theme: newTheme })
+    } catch (error) {
+      console.error('Error updating theme in Firestore:', error)
+    }
+  }
 }
 
 function labelForTheme(key: keyof typeof themes): string {
