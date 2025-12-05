@@ -32,6 +32,12 @@
             </template>
             <IonLabel>Servicios</IonLabel>
           </IonItem>
+          <IonItem button @click="navigateTo('/more')">
+            <template #start>
+              <IonIcon :icon="ellipsisHorizontalOutline"></IonIcon>
+            </template>
+            <IonLabel>Más</IonLabel>
+          </IonItem>
         </IonList>
       </IonContent>
     </IonMenu>
@@ -61,6 +67,7 @@ import {
   peopleOutline,
   briefcaseOutline,
   cutOutline,
+  ellipsisHorizontalOutline,
 } from 'ionicons/icons'
 
 const router = useRouter()

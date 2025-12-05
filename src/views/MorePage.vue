@@ -2,6 +2,10 @@
   <IonPage>
     <IonHeader>
       <IonToolbar>
+        <!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+        <IonButtons slot="start">
+          <IonMenuButton menu="main-menu"></IonMenuButton>
+        </IonButtons>
         <IonTitle>Más</IonTitle>
       </IonToolbar>
     </IonHeader>
@@ -45,6 +49,8 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonMenuButton,
+  IonButtons,
   IonContent,
   IonList,
   IonItem,
