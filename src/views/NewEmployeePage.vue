@@ -50,7 +50,7 @@
             <IonTextarea
               v-model="notes"
               placeholder="Información adicional sobre el empleado..."
-              rows="4"
+              :rows="4"
               :disabled="loading"
             />
           </IonItem>

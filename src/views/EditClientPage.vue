@@ -72,7 +72,7 @@
             <IonTextarea
               v-model="notes"
               placeholder="Información adicional sobre el cliente..."
-              rows="4"
+              :rows="4"
               :disabled="loading || deleting"
             />
           </IonItem>

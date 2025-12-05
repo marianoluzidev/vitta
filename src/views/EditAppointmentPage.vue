@@ -218,6 +218,7 @@ import {
 } from '@/services/appointmentsService';
 import { getEmployeesBySalonId, type Employee } from '@/services/employeesService';
 import { getServicesBySalonId, type Service } from '@/services/servicesService';
+import { getClientsBySalonId, type Client } from '@/services/clientsService';
 
 const router = useRouter();
 const route = useRoute();
