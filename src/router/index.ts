@@ -13,6 +13,13 @@ import CreateAppointmentPage from '@/views/CreateAppointmentPage.vue'
 import AppointmentDetailsPage from '@/views/AppointmentDetailsPage.vue'
 import EditAppointmentPage from '@/views/EditAppointmentPage.vue'
 
+import NewClientPage from '@/views/NewClientPage.vue'
+import EditClientPage from '@/views/EditClientPage.vue'
+import NewEmployeePage from '@/views/NewEmployeePage.vue'
+import EditEmployeePage from '@/views/EditEmployeePage.vue'
+import NewServicePage from '@/views/NewServicePage.vue'
+import EditServicePage from '@/views/EditServicePage.vue'
+
 const routes = [
   // Entrada a la app
   {
@@ -52,6 +59,34 @@ const routes = [
     path: '/services',
     name: 'Services',
     component: ServicesPage,
+  },
+
+  // Rutas para crear nuevos elementos
+  {
+    path: '/clients/new',
+    component: NewClientPage,
+  },
+  {
+    path: '/employees/new',
+    component: NewEmployeePage,
+  },
+  {
+    path: '/services/new',
+    component: NewServicePage,
+  },
+
+  // Rutas para editar elementos
+  {
+    path: '/clients/:id/edit',
+    component: EditClientPage,
+  },
+  {
+    path: '/employees/:id/edit',
+    component: EditEmployeePage,
+  },
+  {
+    path: '/services/:id/edit',
+    component: EditServicePage,
   },
   
   // Redirects legacy /tabs routes
