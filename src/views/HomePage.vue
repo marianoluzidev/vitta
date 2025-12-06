@@ -10,6 +10,7 @@
         <IonTitle class="logo-title">
           Vitta
           <span class="salon-name">{{ displaySalonName }}</span>
+          <span class="version">v{{ appVersion }}</span>
         </IonTitle>
       </IonToolbar>
     </IonHeader>
@@ -127,9 +128,11 @@
     calendarOutline,
     add,
   } from 'ionicons/icons';
-  import { auth, db } from '@/firebase/app';
-  import { collection, query, where, getDocs } from 'firebase/firestore';
-  import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/firebase/app';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { themes } from '@/theme/themes';
+import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/applyTheme';
   
   // Types
   import type { AppointmentStatus } from '@/services/appointmentsService';
@@ -149,6 +152,10 @@
     employeeName?: string;
   }
   
+  // App version (injected by Vite)
+  declare const __APP_VERSION__: string;
+  const appVersion = __APP_VERSION__;
+
   // State
   const router = useRouter();
   const route = useRoute();
@@ -220,6 +227,32 @@
           const salonData = salonDoc.data();
           selectedSalon.value = salonData.name || 'Sin nombre';
           selectedSalonId.value = salonDoc.id;
+          
+          // Load and apply theme from Firestore
+          // Priority: customTheme > theme (string)
+          if (salonData.customTheme && typeof salonData.customTheme === 'object') {
+            // Custom theme from logo
+            const customTheme = salonData.customTheme as ThemeDefinition;
+            applyThemeDefinition(customTheme);
+            localStorage.setItem('theme', 'custom-logo');
+            localStorage.setItem('customTheme', JSON.stringify(customTheme));
+          } else if (salonData.theme) {
+            const theme = salonData.theme;
+            if (typeof theme === 'string' && theme in themes) {
+              // Predefined theme
+              applyTheme(theme as keyof typeof themes);
+              localStorage.setItem('theme', theme);
+            } else {
+              // Fallback to vitta if theme is invalid
+              applyTheme('vitta');
+              localStorage.setItem('theme', 'vitta');
+            }
+          } else {
+            // No theme in Firestore, use vitta
+            applyTheme('vitta');
+            localStorage.setItem('theme', 'vitta');
+          }
+          
           // Load employees, services, and appointments after salon is loaded
           await Promise.all([
             loadEmployees(),
@@ -529,9 +562,12 @@
   <style scoped>
   .logo-title {
     font-weight: 600;
-    color: #08b8a4;
+    color: var(--ion-color-primary);
     font-size: 1.2rem;
     margin-left: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   
   .date-selector-section {
@@ -555,7 +591,7 @@
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .view-mode-segment {
@@ -583,7 +619,7 @@
   .appointment-time {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #08b8a4;
+    color: var(--ion-color-primary);
     margin-bottom: 8px;
   }
   
@@ -603,13 +639,14 @@
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .service-name {
     margin: 0;
     font-size: 0.875rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   .appointment-meta {
@@ -621,7 +658,8 @@
   
   .employee-name {
     font-size: 0.75rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   .status-badge {
@@ -640,7 +678,8 @@
   
   .empty-icon {
     font-size: 64px;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.5;
     margin-bottom: 24px;
   }
   
@@ -648,13 +687,14 @@
     margin: 0 0 8px 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #222222;
+    color: var(--ion-text-color);
   }
   
   .empty-subtitle {
     margin: 0;
     font-size: 0.875rem;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
 
   .loading-appointments {
@@ -668,27 +708,37 @@
 
   .loading-appointments p {
     margin-top: 16px;
-    color: #6a6a6a;
+    color: var(--ion-text-color);
+    opacity: 0.7;
   }
   
   ion-fab-button {
-    --background: #08b8a4;
-    --background-activated: #06a894;
-    --background-hover: #07c4b0;
+    --background: var(--ion-color-primary);
+    --background-activated: var(--ion-color-primary-shade);
+    --background-hover: var(--ion-color-primary-tint);
   }
   .logo-title {
   font-weight: 600;
-  color: #08b8a4;
+  color: var(--ion-color-primary);
   font-size: 1.2rem;
   display: flex;
   flex-direction: column;
   line-height: 1.2;
+  justify-content: center;
 }
 
 .salon-name {
-  font-weight: 400;
-  font-size: 0.8rem;
-  color: #6a6a6a;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ion-text-color);
+  opacity: 0.7;
+}
+
+.version {
+  font-weight: 300;
+  font-size: 0.7rem;
+  color: #999;
+  margin-left: 4px;
 }
 
   
