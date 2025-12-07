@@ -35,45 +35,41 @@
           </IonLabel>
         </IonItem>
         
-        <IonItem lines="full">
-          <IonLabel>Color primario</IonLabel>
-          <input 
-            type="color" 
-            v-model="editablePrimary" 
-            @input="previewEditableTheme"
-            class="color-picker"
-          />
-        </IonItem>
+        <div class="color-picker-item">
+          <IonLabel class="color-picker-label">
+            <h3>Color primario</h3>
+          </IonLabel>
+          <div class="color-picker-wrapper">
+            <ColorPicker v-model="editablePrimary" />
+          </div>
+        </div>
         
-        <IonItem lines="full">
-          <IonLabel>Color secundario</IonLabel>
-          <input 
-            type="color" 
-            v-model="editableSecondary" 
-            @input="previewEditableTheme"
-            class="color-picker"
-          />
-        </IonItem>
+        <div class="color-picker-item">
+          <IonLabel class="color-picker-label">
+            <h3>Color secundario</h3>
+          </IonLabel>
+          <div class="color-picker-wrapper">
+            <ColorPicker v-model="editableSecondary" />
+          </div>
+        </div>
         
-        <IonItem lines="full">
-          <IonLabel>Fondo</IonLabel>
-          <input 
-            type="color" 
-            v-model="editableBackground" 
-            @input="previewEditableTheme"
-            class="color-picker"
-          />
-        </IonItem>
+        <div class="color-picker-item">
+          <IonLabel class="color-picker-label">
+            <h3>Fondo</h3>
+          </IonLabel>
+          <div class="color-picker-wrapper">
+            <ColorPicker v-model="editableBackground" />
+          </div>
+        </div>
         
-        <IonItem lines="full">
-          <IonLabel>Texto</IonLabel>
-          <input 
-            type="color" 
-            v-model="editableText" 
-            @input="previewEditableTheme"
-            class="color-picker"
-          />
-        </IonItem>
+        <div class="color-picker-item">
+          <IonLabel class="color-picker-label">
+            <h3>Texto</h3>
+          </IonLabel>
+          <div class="color-picker-wrapper">
+            <ColorPicker v-model="editableText" />
+          </div>
+        </div>
 
         <div class="custom-theme-actions">
           <IonButton 
@@ -90,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   IonPage,
   IonHeader,
@@ -113,6 +109,7 @@ import { lightenColor, darkenColor } from '@/theme/utils'
 import { auth, db } from '@/firebase/app'
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
+import ColorPicker from '@/components/ColorPicker.vue'
 
 const currentTheme = ref<keyof typeof themes>('vitta')
 const salonId = ref<string>('')
@@ -271,6 +268,13 @@ function previewEditableTheme() {
   applyThemeDefinition(theme)
 }
 
+// Watch for color changes to preview in real-time
+watch([editablePrimary, editableSecondary, editableBackground, editableText], () => {
+  if (themeMode.value === 'custom-logo' && hasCustomTheme.value) {
+    previewEditableTheme()
+  }
+})
+
 // Save edited theme to Firestore
 async function saveEditableTheme() {
   if (!salonId.value) return
@@ -316,12 +320,55 @@ function labelForTheme(key: keyof typeof themes): string {
   padding: 16px;
 }
 
-.color-picker {
-  width: 50px;
-  height: 40px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.color-picker-item {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--ion-item-background, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.color-picker-label {
+  margin-bottom: 12px;
+  display: block;
+}
+
+.color-picker-label h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ion-text-color);
+}
+
+.color-picker-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background: var(--ion-background-color, #ffffff);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.color-picker-wrapper :deep(.vitta-color-picker) {
+  width: 100%;
+  max-width: 100%;
+  box-shadow: none;
+}
+
+.color-picker-wrapper :deep(.vc-chrome) {
+  width: 100% !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.color-picker-wrapper :deep(.vc-chrome-body) {
+  padding: 12px !important;
+}
+
+.color-picker-wrapper :deep(.vc-chrome-saturation-wrap) {
+  border-radius: 6px !important;
+  overflow: hidden;
 }
 </style>
 
