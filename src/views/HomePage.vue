@@ -16,6 +16,11 @@
     </IonHeader>
 
     <IonContent :fullscreen="true">
+      <!-- Salon Logo Section -->
+      <div v-if="salonLogoUrl" class="salon-logo-container">
+        <img :src="salonLogoUrl" alt="Logo del salón" class="salon-logo-image" />
+      </div>
+
       <!-- Date Selector Section -->
       <div class="date-selector-section">
         <div class="date-navigation">
@@ -161,6 +166,7 @@ import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/
   const route = useRoute();
   const selectedSalon = ref('');
   const selectedSalonId = ref('');
+  const salonLogoUrl = ref<string | null>(null);
   const selectedDate = ref(new Date());
   const viewMode = ref<'day' | 'week'>('day');
   const loadingSalon = ref(true);
@@ -227,6 +233,8 @@ import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/
           const salonData = salonDoc.data();
           selectedSalon.value = salonData.name || 'Sin nombre';
           selectedSalonId.value = salonDoc.id;
+          // Load salon logo if available
+          salonLogoUrl.value = salonData.logoUrl || null;
           
           // Load and apply theme from Firestore
           // Priority: customTheme > theme (string)
@@ -570,6 +578,19 @@ import { applyTheme, applyThemeDefinition, type ThemeDefinition } from '@/theme/
     justify-content: center;
   }
   
+  .salon-logo-container {
+    display: flex;
+    justify-content: center;
+    padding: 16px 16px 8px;
+  }
+
+  .salon-logo-image {
+    max-width: 70%;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
   .date-selector-section {
     padding: 16px;
     background: var(--ion-background-color);
