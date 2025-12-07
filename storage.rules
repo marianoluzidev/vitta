@@ -1,0 +1,24 @@
+rules_version = '2';
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Reglas para logos de salones
+    // Permite cualquier archivo dentro de salons/{salonId}/
+    match /salons/{salonId}/{fileName} {
+      // Validar que el nombre del archivo comience con "logo_"
+      // y que el usuario esté autenticado
+      allow read: if request.auth != null;
+      
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024 // Máximo 5MB
+                   && request.resource.contentType.matches('image/.*')
+                   && fileName.matches('logo_.*'); // El nombre debe comenzar con "logo_"
+    }
+    
+    // Denegar todo lo demás por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
