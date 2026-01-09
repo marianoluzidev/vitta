@@ -4,6 +4,9 @@ import HomePage from '@/views/HomePage.vue'
 import ClientsPage from '@/views/ClientsPage.vue'
 import EmployeesPage from '@/views/EmployeesPage.vue'
 import ServicesPage from '@/views/ServicesPage.vue'
+import MorePage from '@/views/MorePage.vue'
+import AppearancePage from '@/views/AppearancePage.vue'
+import ThemeFromLogoPage from '@/views/ThemeFromLogoPage.vue'
 
 import OnboardingPage from '@/views/OnboardingPage.vue'
 import LoginPage from '@/views/LoginPage.vue'
@@ -59,6 +62,21 @@ const routes = [
     path: '/services',
     name: 'Services',
     component: ServicesPage,
+  },
+  {
+    path: '/more',
+    name: 'More',
+    component: MorePage,
+  },
+  {
+    path: '/appearance',
+    name: 'Appearance',
+    component: AppearancePage,
+  },
+  {
+    path: '/theme-from-logo',
+    name: 'ThemeFromLogo',
+    component: ThemeFromLogoPage,
   },
 
   // Rutas para crear nuevos elementos
