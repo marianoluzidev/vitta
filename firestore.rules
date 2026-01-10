@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Reglas para la colección de tenants
+    // Permitir lectura pública de tenants (necesario para validar si un tenant existe)
+    match /tenants/{tenantId} {
+      allow read: if true; // Permitir lectura pública
+      allow write: if false; // Solo se puede escribir desde el backend/admin
+    }
+    
+    // Reglas por defecto: denegar todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

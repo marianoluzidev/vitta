@@ -1,0 +1,19 @@
+{
+  "cwd": "C:\\angular_proj\\vitta",
+  "type": [
+    "pwa",
+    "web"
+  ],
+  "name": "Vitta",
+  "framework": "vue",
+  "template": "blank",
+  "cssPreProcessor": false,
+  "bundler": "vite",
+  "theming": {
+    "customColor": false,
+    "color": "#007aff",
+    "darkMode": false,
+    "iconFonts": true
+  },
+  "customBuild": false
+}
