@@ -1,0 +1,42 @@
+/* CSS personalizado para Demo Tenant */
+
+/* Título principal */
+.tenant-home .welcome-title,
+.tenant-home h1.welcome-title {
+  color: #f19894 !important;
+  text-shadow: 0 2px 4px rgba(92, 223, 92, 0.2) !important;
+}
+
+/* Subtítulo */
+.tenant-home .welcome-subtitle,
+.tenant-home p.welcome-subtitle {
+  color: #4646dd !important;
+}
+
+/* Navbar - usando selectores más específicos de Framework7 */
+.tenant-home .navbar,
+.tenant-home .navbar-bg,
+.tenant-home .navbar-inner {
+  background-color: #9496f1 !important;
+  background: #9496f1 !important;
+}
+
+.tenant-home .navbar .navbar-title {
+  color: white !important;
+}
+
+/* Logo del tenant */
+.tenant-home .tenant-logo-container {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background-color: var(--vitta-background, #ffffff);
+}
+
+.tenant-home .tenant-logo {
+  max-width: 200px;
+  max-height: 120px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+

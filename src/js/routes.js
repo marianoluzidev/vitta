@@ -4,7 +4,11 @@ import BookPage from '../pages/book.vue';
 import ConfirmPage from '../pages/confirm.vue';
 import MyBookingsPage from '../pages/my-bookings.vue';
 import StorePage from '../pages/store.vue';
-import AdminPage from '../pages/admin.vue';
+import AdminShellPage from '../pages/admin-shell.vue';
+import AdminAgendaPage from '../pages/tenant/admin/agenda.vue';
+import AdminPendingPage from '../pages/tenant/admin/pending.vue';
+import AdminStaffPage from '../pages/tenant/admin/staff.vue';
+import AdminServicesPage from '../pages/tenant/admin/services.vue';
 import LoginPage from '../pages/login.vue';
 import AccessDeniedPage from '../pages/access-denied.vue';
 import TenantNotFoundPage from '../pages/tenant-not-found.vue';
@@ -38,7 +42,7 @@ var routes = [
     component: OwnerPage,
     beforeEnter: requireOwner,
   },
-  // Rutas de tenant (Framework7 maneja automáticamente con/sin slash con pushState: true)
+  // Rutas de tenant
   {
     path: '/t/:tenantId/',
     component: BookPage,
@@ -66,7 +70,27 @@ var routes = [
   },
   {
     path: '/t/:tenantId/admin/',
-    component: AdminPage,
+    component: AdminShellPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/agenda/',
+    component: AdminAgendaPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/pending/',
+    component: AdminPendingPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/staff/',
+    component: AdminStaffPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/services/',
+    component: AdminServicesPage,
     beforeEnter: requireTenantAndAuth,
   },
   {

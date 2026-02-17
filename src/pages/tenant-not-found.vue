@@ -19,10 +19,12 @@
 </template>
 
 <script setup lang="ts">
-import { f7 } from 'framework7-vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const goHome = () => {
-  f7.views.main.router.navigate('/');
+  router.push('/');
 };
 </script>
 

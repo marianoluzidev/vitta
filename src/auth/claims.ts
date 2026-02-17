@@ -1,52 +1,66 @@
-import { User, getIdTokenResult } from 'firebase/auth';
+import { User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { getDbInstance } from '../firebase/firebase';
 
-// Cache de claims por usuario
-const claimsCache = new Map<string, { claims: any; timestamp: number }>();
+// Cache de verificación de owner por usuario
+const ownerCache = new Map<string, { isOwner: boolean; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 /**
- * Obtiene los custom claims del usuario (con cache)
+ * Verifica si el usuario tiene el rol de owner consultando Firestore
+ * 
+ * La estructura en Firestore es:
+ * - Colección: `owners`
+ * - Documento ID: `uid` del usuario
+ * - Si el documento existe, el usuario es owner
  */
-export async function getUserClaims(user: User): Promise<any> {
-  const cached = claimsCache.get(user.uid);
+export async function isOwner(user: User): Promise<boolean> {
+  const cached = ownerCache.get(user.uid);
   const now = Date.now();
   
+  // Verificar cache
   if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-    return cached.claims;
+    return cached.isOwner;
   }
   
   try {
-    const tokenResult = await getIdTokenResult(user, true); // forceRefresh = true
-    const claims = tokenResult.claims || {};
+    const db = getDbInstance();
+    const ownerRef = doc(db, 'owners', user.uid);
+    const ownerSnap = await getDoc(ownerRef);
     
-    claimsCache.set(user.uid, {
-      claims,
+    const isOwnerResult = ownerSnap.exists();
+    
+    // Actualizar cache
+    ownerCache.set(user.uid, {
+      isOwner: isOwnerResult,
       timestamp: now
     });
     
-    return claims;
+    return isOwnerResult;
   } catch (error) {
-    console.error('Error getting user claims:', error);
-    return {};
+    console.error('Error checking owner status in Firestore:', error);
+    // En caso de error, retornar false por seguridad
+    return false;
   }
 }
 
 /**
- * Verifica si el usuario tiene el rol de owner
+ * Limpia el cache de owner (útil después de actualizar roles)
  */
-export async function isOwner(user: User): Promise<boolean> {
-  const claims = await getUserClaims(user);
-  return claims.owner === true;
-}
-
-/**
- * Limpia el cache de claims (útil después de actualizar roles)
- */
-export function clearClaimsCache(userId?: string): void {
+export function clearOwnerCache(userId?: string): void {
   if (userId) {
-    claimsCache.delete(userId);
+    ownerCache.delete(userId);
   } else {
-    claimsCache.clear();
+    ownerCache.clear();
   }
+}
+
+/**
+ * @deprecated Ya no se usan custom claims, se usa Firestore
+ * Mantenido por compatibilidad
+ */
+export async function getUserClaims(user: User): Promise<any> {
+  const isOwnerResult = await isOwner(user);
+  return { owner: isOwnerResult };
 }
 

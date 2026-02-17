@@ -1,0 +1,90 @@
+/* CSS personalizado para Demo Tenant */
+
+/* Fondo de la página principal (tenant home y admin) */
+.tenant-home,
+.tenant-home .page,
+.tenant-home .page-content,
+.tenant-home .page-content-inner,
+.admin-shell .page,
+.admin-shell .admin-shell__content,
+.admin-shell .tabs .tab .page,
+.admin-shell .tabs .tab .page .page-content {
+  background-color: #fff8e6 !important;
+  background: #fff8e6 !important;
+}
+
+/* Fondo de los bloques también */
+.tenant-home .block,
+.tenant-home .block-strong,
+.admin-shell .block,
+.admin-shell .block-strong {
+  background-color: transparent !important;
+}
+
+/* Título principal */
+.tenant-home .welcome-title,
+.tenant-home h1.welcome-title {
+  color: #f19894 !important;
+  text-shadow: 0 2px 4px rgba(92, 223, 92, 0.2) !important;
+}
+
+/* Subtítulo */
+.tenant-home .welcome-subtitle,
+.tenant-home p.welcome-subtitle {
+  color: #332e22 !important;
+}
+
+/* Navbar (tenant home y admin) */
+.tenant-home .navbar,
+.tenant-home .navbar-bg,
+.tenant-home .navbar-inner,
+.admin-shell .navbar,
+.admin-shell .navbar-bg,
+.admin-shell .navbar-inner {
+  background-color: #cca28b !important;
+  background: #cca28b !important;
+}
+
+.tenant-home .navbar .navbar-title,
+.admin-shell .navbar .navbar-title {
+  color: white !important;
+}
+
+/* Logo del tenant y admin */
+.tenant-home .tenant-logo-container,
+.admin-shell .tenant-logo-container {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background-color: var(--vitta-background, #ffffff);
+}
+
+.tenant-home .tenant-logo,
+.admin-shell .tenant-logo {
+  max-width: 250px;
+  max-height: 170px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Página de login: mismos estilos que el tenant */
+.tenant-login,
+.tenant-login .page,
+.tenant-login .page-content {
+  background-color: #fff8e6 !important;
+  background: #fff8e6 !important;
+  color: #332e22 !important;
+}
+.tenant-login .navbar,
+.tenant-login .navbar-bg,
+.tenant-login .navbar-inner {
+  background-color: #cca28b !important;
+  background: #cca28b !important;
+}
+.tenant-login .navbar .navbar-title {
+  color: white !important;
+}
+.tenant-login .block {
+  background-color: transparent !important;
+}
+

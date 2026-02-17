@@ -10,12 +10,18 @@ import Framework7Vue, { registerComponents } from 'framework7-vue/bundle';
 // Import Framework7 Styles
 import 'framework7/css/bundle';
 
-// Import Icons and App Custom Styles
-import '../css/icons.css';
+// Fuentes de iconos (paths resueltos por Vite desde node_modules)
+import 'framework7-icons/css/framework7-icons.css';
+import 'material-icons/iconfont/material-icons.css';
+
+// App Custom Styles
 import '../css/app.css';
 
 // Import App Component
 import App from '../components/app.vue';
+
+// Import Vue Router
+import router from '../router/index';
 
 // Import Firebase
 import { initFirebase } from '../firebase/firebase';
@@ -41,6 +47,8 @@ const app = createApp(App);
 // Register Framework7 Vue components
 registerComponents(app);
 
+// Use Vue Router
+app.use(router);
 
 // Mount the app
 app.mount('#app');

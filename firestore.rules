@@ -3,9 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Reglas para la colección de tenants
     // Permitir lectura pública de tenants (necesario para validar si un tenant existe)
+    // Permitir escritura solo a usuarios autenticados (el guard requireOwner valida el rol)
     match /tenants/{tenantId} {
       allow read: if true; // Permitir lectura pública
-      allow write: if false; // Solo se puede escribir desde el backend/admin
+      allow create, update: if request.auth != null; // Solo usuarios autenticados (validado por guard)
+      allow delete: if false; // No permitir eliminar (solo desactivar)
+    }
+    
+    // Colección de owners: permitir lectura si el usuario autenticado está consultando su propio documento
+    match /owners/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Solo desde backend/admin
     }
     
     // Reglas por defecto: denegar todo lo demás

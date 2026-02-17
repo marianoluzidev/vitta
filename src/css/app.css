@@ -1,1 +1,39 @@
-/* Your app custom styles here */
+/* Tabbar en admin-shell: margen y padding superior + icon arriba + texto abajo */
+.admin-shell .toolbar.tabbar {
+  margin-top: 10px;
+  padding-top: 0px;
+}
+.admin-shell .toolbar.tabbar .tab-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+  padding-top: 20px;
+  padding-bottom: 6px;
+}
+
+.admin-shell .toolbar.tabbar .icon,
+.admin-shell .toolbar.tabbar .f7-icons,
+.admin-shell .toolbar.tabbar .material-icons {
+  display: block;
+  font-size: 22px;
+  line-height: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.admin-shell .toolbar.tabbar .tabbar-label {
+  display: block;
+  font-size: 11px;
+  line-height: 1.1;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* Reservar espacio para que el contenido no quede debajo del tabbar */
+.admin-shell .page-content.admin-shell__content {
+  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom));
+}

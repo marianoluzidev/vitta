@@ -1,6 +1,6 @@
 <template>
-  <f7-page>
-    <f7-navbar title="Book" />
+  <f7-page class="tenant-book">
+    <f7-navbar title="Reservar turno" />
     <f7-block v-if="checkingTenant">
       <div style="text-align: center; padding: 2rem;">
         <p>Cargando...</p>
@@ -27,30 +27,31 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { f7 } from 'framework7-vue';
+import { useRouter, useRoute } from 'vue-router';
 import { signOutUser } from '../auth/auth';
-import { getTenantIdFromPath } from '../tenant/tenant';
 import { getTenant } from '../tenant/tenantService';
 
+const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
 const tenantValid = ref(false);
 const checkingTenant = ref(true);
 
 onMounted(async () => {
   // Validar tenant también desde el componente por si el guard no se ejecutó
-  const tenantId = getTenantIdFromPath(window.location.pathname);
+  const tenantId = route.params.tenantId as string;
   
   if (tenantId) {
     try {
       const tenant = await getTenant(tenantId);
       
       if (!tenant) {
-        f7.views.main.router.navigate('/tenant-not-found/');
+        router.push('/tenant-not-found/');
         return;
       }
       
       if (tenant.isActive === false) {
-        f7.views.main.router.navigate('/tenant-disabled/');
+        router.push('/tenant-disabled/');
         return;
       }
       
@@ -62,7 +63,7 @@ onMounted(async () => {
       if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
         tenantValid.value = true;
       } else {
-        f7.views.main.router.navigate('/tenant-not-found/');
+        router.push('/tenant-not-found/');
         return;
       }
     }
@@ -78,11 +79,11 @@ const handleLogout = async () => {
   
   try {
     loading.value = true;
-    const tenantId = getTenantIdFromPath(window.location.pathname);
+    const tenantId = route.params.tenantId as string;
     await signOutUser();
     
-    const loginPath = tenantId ? `/t/${tenantId}/login/` : '/login/';
-    f7.views.main.router.navigate(loginPath);
+    const loginPath = tenantId ? `/t/${tenantId}/login/` : '/controlPanel/login/';
+    router.push(loginPath);
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
     loading.value = false;

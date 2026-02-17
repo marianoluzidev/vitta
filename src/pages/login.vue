@@ -1,5 +1,5 @@
 <template>
-  <f7-page name="login">
+  <f7-page name="login" class="tenant-login">
     <f7-navbar title="Iniciar Sesión" />
     <f7-block strong inset style="padding-top: 2rem;">
       <div style="max-width: 400px; margin: 0 auto; padding: 0 1rem;">
@@ -21,9 +21,9 @@
           fill
           @click="handleGoogleSignIn"
           :disabled="loading"
-          style="margin-bottom: 1.5rem; width: 100%; background-color: var(--vitta-primary, #007aff); color: white;"
+          style="margin-bottom: 1.5rem; width: 100%; background-color: var(--vitta-primary, #007aff); color: white; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;"
         >
-          <f7-icon material="" style="margin-right: 0.5rem;"></f7-icon>
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20" style="flex-shrink: 0;" />
           Continuar con Google
         </f7-button>
 
@@ -77,12 +77,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { f7 } from 'framework7-vue';
+import { useRouter, useRoute } from 'vue-router';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../auth/auth';
 import { getCurrentUser, requireAuthReady } from '../auth/session';
-import { getTenantIdFromPath } from '../tenant/tenant';
+import { getTenant } from '../tenant/tenantService';
 import { loadAndApplyTheme } from '../branding/branding';
 
+const router = useRouter();
+const route = useRoute();
 const email = ref('');
 const password = ref('');
 const loading = ref(false);
@@ -177,28 +179,29 @@ const redirectAfterLogin = () => {
       targetPath += '/';
     }
   } else if (tenantId.value) {
-    targetPath = `/t/${tenantId.value}/book/`;
+    targetPath = `/t/${tenantId.value}/`;
   } else {
     targetPath = '/';
   }
   
-  f7.views.main.router.navigate(targetPath);
+  router.push(targetPath);
 };
 
 onMounted(async () => {
   console.log('Login page mounted');
   
   // Detectar tenantId de la ruta
-  const currentPath = window.location.pathname;
-  tenantId.value = getTenantIdFromPath(currentPath);
+  tenantId.value = route.params.tenantId as string || null;
   
-  // Cargar y aplicar branding si hay tenant
+  // Cargar branding y nombre del tenant
   if (tenantId.value) {
     try {
       const theme = await loadAndApplyTheme(tenantId.value);
-      tenantName.value = theme.name;
+      const tenant = await getTenant(tenantId.value);
+      tenantName.value = tenant?.name || theme.name || tenantId.value;
     } catch (error) {
-      console.error('Error loading theme:', error);
+      console.error('Error loading theme or tenant:', error);
+      tenantName.value = tenantId.value;
     }
   }
   

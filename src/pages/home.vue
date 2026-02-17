@@ -22,9 +22,11 @@
 </template>
 
 <script setup>
-import { f7 } from 'framework7-vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const goToLogin = () => {
-  f7.views.main.router.navigate('/login/');
+  router.push('/controlPanel/login/');
 };
 </script>

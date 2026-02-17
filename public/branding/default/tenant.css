@@ -1,0 +1,144 @@
+/* CSS por defecto para tenants */
+/* NOTA: Las variables CSS se definen dinámicamente por applyTheme() en branding.ts */
+/* Este archivo solo define estilos específicos para elementos del tenant */
+
+/* Estilos para la página home del tenant y admin (mismo branding) */
+.tenant-home,
+.tenant-home .page,
+.tenant-home .page-content,
+.admin-shell .page,
+.admin-shell .admin-shell__content,
+.admin-shell .tabs .tab .page,
+.admin-shell .tabs .tab .page .page-content {
+  min-height: 100vh;
+  background-color: var(--vitta-background, #ffffff);
+  background: var(--vitta-background, #ffffff);
+}
+
+.tenant-home .welcome-section {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.tenant-home .welcome-title {
+  font-size: 2.5rem !important;
+  font-weight: bold !important;
+  color: var(--vitta-primary) !important;
+  margin-bottom: 1rem !important;
+  text-align: center !important;
+}
+
+.tenant-home .welcome-subtitle {
+  font-size: 1.1rem !important;
+  color: var(--vitta-text) !important;
+  opacity: 0.7 !important;
+  text-align: center !important;
+  margin-top: 1rem !important;
+}
+
+/* Estilos para botones del tenant */
+.tenant-button {
+  background-color: var(--vitta-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.tenant-button:hover {
+  opacity: 0.9;
+}
+
+.tenant-button:active {
+  opacity: 0.8;
+}
+
+.tenant-button-outline {
+  background-color: transparent;
+  color: var(--vitta-primary);
+  border: 2px solid var(--vitta-primary);
+}
+
+/* Estilos para cards del tenant */
+.tenant-card {
+  background-color: var(--vitta-background);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para listas del tenant */
+.tenant-list-item {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+}
+
+.tenant-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para el navbar del tenant */
+.tenant-navbar {
+  background-color: var(--vitta-primary);
+  color: white;
+}
+
+/* Estilos para inputs del tenant */
+.tenant-input {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+.tenant-input:focus {
+  outline: none;
+  border-color: var(--vitta-primary);
+}
+
+/* Logo del tenant y admin - estilos base que pueden ser sobrescritos por el tenant */
+.tenant-home .tenant-logo-container,
+.admin-shell .tenant-logo-container {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background-color: var(--vitta-background, #ffffff);
+}
+
+.tenant-home .tenant-logo,
+.admin-shell .tenant-logo {
+  max-width: 200px;
+  max-height: 120px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Página de login del tenant: mismo fondo y colores que el resto */
+.tenant-login,
+.tenant-login .page,
+.tenant-login .page-content {
+  background-color: var(--vitta-background, #ffffff);
+  background: var(--vitta-background, #ffffff);
+  color: var(--vitta-text, #000000);
+}
+.tenant-login .navbar,
+.tenant-login .navbar-bg,
+.tenant-login .navbar-inner {
+  background-color: var(--vitta-primary) !important;
+  background-image: none !important;
+}
+.tenant-login .navbar .navbar-title {
+  color: #fff !important;
+}
+.tenant-login .block {
+  background-color: transparent;
+}
+

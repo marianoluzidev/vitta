@@ -20,20 +20,25 @@
   </f7-page>
 </template>
 
-<script>
-import { f7 } from 'framework7-vue';
+<script setup>
+import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { signOutUser } from '../auth/auth';
 
-export default {
-  name: 'AccessDeniedPage',
-  setup() {
-    const goHome = () => {
-      f7.views.main.router.navigate('/');
-    };
+const router = useRouter();
 
-    return {
-      goHome,
-    };
-  },
+const goHome = () => {
+  router.push('/');
 };
+
+onMounted(async () => {
+  // Cerrar sesión automáticamente cuando se muestra esta página
+  try {
+    await signOutUser();
+    console.log('Sesión cerrada automáticamente por acceso denegado');
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+  }
+});
 </script>
 

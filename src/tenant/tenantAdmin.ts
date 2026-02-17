@@ -126,6 +126,25 @@ export async function createTenant(
 }
 
 /**
+ * Actualiza el nombre de un tenant
+ */
+export async function updateTenantName(tenantId: string, name: string): Promise<void> {
+  const normalizedId = normalizeTenantId(tenantId);
+  const db = getDbInstance();
+  const tenantRef = doc(db, 'tenants', normalizedId);
+  
+  // Verificar que existe
+  const exists = await tenantExists(normalizedId);
+  if (!exists) {
+    throw new Error(`El tenant "${normalizedId}" no existe`);
+  }
+  
+  await updateDoc(tenantRef, {
+    name: name || normalizedId,
+  });
+}
+
+/**
  * Actualiza el estado isActive de un tenant
  */
 export async function toggleTenantActive(tenantId: string, isActive: boolean): Promise<void> {
@@ -150,18 +169,49 @@ export async function toggleTenantActive(tenantId: string, isActive: boolean): P
 export async function listTenants(limitCount: number = 50): Promise<TenantDoc[]> {
   const db = getDbInstance();
   const tenantsRef = collection(db, 'tenants');
-  const q = query(tenantsRef, orderBy('createdAt', 'desc'), limit(limitCount));
   
-  const querySnapshot = await getDocs(q);
-  const tenants: TenantDoc[] = [];
-  
-  querySnapshot.forEach((docSnap) => {
-    tenants.push({
-      tenantId: docSnap.id,
-      ...docSnap.data(),
-    } as TenantDoc);
-  });
-  
-  return tenants;
+  try {
+    // Intentar con orderBy primero
+    const q = query(tenantsRef, orderBy('createdAt', 'desc'), limit(limitCount));
+    const querySnapshot = await getDocs(q);
+    const tenants: TenantDoc[] = [];
+    
+    querySnapshot.forEach((docSnap) => {
+      tenants.push({
+        tenantId: docSnap.id,
+        ...docSnap.data(),
+      } as TenantDoc);
+    });
+    
+    return tenants;
+  } catch (error: any) {
+    // Si falla por falta de índice, intentar sin orderBy
+    if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+      console.warn('Índice de createdAt no encontrado, cargando sin ordenar...');
+      const q = query(tenantsRef, limit(limitCount));
+      const querySnapshot = await getDocs(q);
+      const tenants: TenantDoc[] = [];
+      
+      querySnapshot.forEach((docSnap) => {
+        tenants.push({
+          tenantId: docSnap.id,
+          ...docSnap.data(),
+        } as TenantDoc);
+      });
+      
+      // Ordenar manualmente por createdAt si existe
+      tenants.sort((a, b) => {
+        if (!a.createdAt && !b.createdAt) return 0;
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return b.createdAt.toMillis() - a.createdAt.toMillis();
+      });
+      
+      return tenants;
+    }
+    
+    // Si es otro error, relanzarlo
+    throw error;
+  }
 }
 
