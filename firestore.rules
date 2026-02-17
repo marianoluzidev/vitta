@@ -8,8 +8,17 @@ service cloud.firestore {
       allow read: if true; // Permitir lectura pública
       allow create, update: if request.auth != null; // Solo usuarios autenticados (validado por guard)
       allow delete: if false; // No permitir eliminar (solo desactivar)
+
+      // Staff del tenant: solo usuarios autenticados (el guard requireTenantAndAuth valida tenant + auth)
+      match /staff/{staffId} {
+        allow read, write: if request.auth != null;
+      }
+      // Servicios del tenant
+      match /services/{serviceId} {
+        allow read, write: if request.auth != null;
+      }
     }
-    
+
     // Colección de owners: permitir lectura si el usuario autenticado está consultando su propio documento
     match /owners/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;

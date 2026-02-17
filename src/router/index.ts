@@ -6,6 +6,10 @@ import ControlPanelLogin from '../pages/controlPanel/login.vue';
 import ControlPanelTenantForm from '../pages/controlPanel/tenant-form.vue';
 import TenantHomePage from '../pages/tenant/home.vue';
 import AdminShellPage from '../pages/admin-shell.vue';
+import StaffNewPage from '../pages/tenant/admin/staff-new.vue';
+import StaffEditPage from '../pages/tenant/admin/staff-edit.vue';
+import ServiceNewPage from '../pages/tenant/admin/services-new.vue';
+import ServiceEditPage from '../pages/tenant/admin/services-edit.vue';
 import BookPage from '../pages/book.vue';
 import MyBookingsPage from '../pages/my-bookings.vue';
 import StorePage from '../pages/store.vue';
@@ -90,6 +94,30 @@ const routes = [
     path: '/t/:tenantId/admin/inicio/',
     name: 'tenant-admin-inicio',
     component: AdminShellPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/staff/new/',
+    name: 'tenant-admin-staff-new',
+    component: StaffNewPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/staff/:staffId/',
+    name: 'tenant-admin-staff-edit',
+    component: StaffEditPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/services/new/',
+    name: 'tenant-admin-services-new',
+    component: ServiceNewPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/services/:serviceId/',
+    name: 'tenant-admin-services-edit',
+    component: ServiceEditPage,
     beforeEnter: requireTenantAndAuth,
   },
   {
