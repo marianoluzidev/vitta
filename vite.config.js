@@ -52,7 +52,7 @@ export default async () => {
     ],
     root: SRC_DIR,
     envDir: ROOT_DIR, // Especificar dónde buscar el archivo .env
-    base: '',
+    base: '/',
     publicDir: PUBLIC_DIR,
     build: {
       outDir: BUILD_DIR,

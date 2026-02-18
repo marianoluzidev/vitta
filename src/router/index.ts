@@ -8,6 +8,7 @@ import TenantHomePage from '../pages/tenant/home.vue';
 import AdminShellPage from '../pages/admin-shell.vue';
 import StaffNewPage from '../pages/tenant/admin/staff-new.vue';
 import StaffEditPage from '../pages/tenant/admin/staff-edit.vue';
+import StaffAvailabilityPage from '../pages/tenant/admin/staff-availability.vue';
 import ServiceNewPage from '../pages/tenant/admin/services-new.vue';
 import ServiceEditPage from '../pages/tenant/admin/services-edit.vue';
 import BookPage from '../pages/book.vue';
@@ -106,6 +107,12 @@ const routes = [
     path: '/t/:tenantId/admin/staff/:staffId/',
     name: 'tenant-admin-staff-edit',
     component: StaffEditPage,
+    beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/admin/staff/:staffId/availability/',
+    name: 'tenant-admin-staff-availability',
+    component: StaffAvailabilityPage,
     beforeEnter: requireTenantAndAuth,
   },
   {

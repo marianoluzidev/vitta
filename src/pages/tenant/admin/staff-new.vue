@@ -50,10 +50,7 @@
           </template>
         </f7-list-item>
       </f7-list>
-    </f7-block>
-
-    <f7-block v-if="servicesList.length > 0" strong inset>
-      <f7-list>
+      <f7-list v-if="servicesList.length > 0">
         <f7-list-item title="Servicios que brinda" group-title />
         <f7-list-item
           v-for="service in servicesList"

@@ -19,6 +19,12 @@
         @click.prevent="goToEdit(member.id)"
       >
         <template #after>
+          <f7-link
+            class="staff-disponibilidad-link"
+            @click.stop.prevent="goToAvailability(member.id)"
+          >
+            Disponibilidad
+          </f7-link>
           <span v-if="!member.active" class="badge color-red" style="margin-right: 0.5rem;">Inactivo</span>
           <span>{{ roleLabel(member.role) }}</span>
         </template>
@@ -78,6 +84,10 @@ function goToEdit(staffId: string): void {
   router.push(`/t/${tenantId.value}/admin/staff/${staffId}/`);
 }
 
+function goToAvailability(staffId: string): void {
+  router.push(`/t/${tenantId.value}/admin/staff/${staffId}/availability/`);
+}
+
 onMounted(() => {
   const tid = tenantId.value;
   if (!tid) {
@@ -106,3 +116,9 @@ onBeforeUnmount(() => {
   if (unsubscribe) unsubscribe();
 });
 </script>
+
+<style scoped>
+.staff-disponibilidad-link {
+  margin-right: 0.5rem;
+}
+</style>
