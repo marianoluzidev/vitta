@@ -61,7 +61,7 @@ const route = useRoute();
 const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
 const serviceId = computed(() => (route.params.serviceId as string) ?? '');
-const servicesListUrl = computed(() => `/t/${tenantId.value}/?tab=services`);
+const servicesListUrl = computed(() => `/t/${tenantId.value}/admin/services/`);
 const loading = ref(true);
 const saving = ref(false);
 
@@ -131,7 +131,7 @@ async function handleSave(): Promise<void> {
       active: form.active,
       updatedAt: serverTimestamp(),
     });
-    router.push(`/t/${tid}/?tab=services`);
+    router.push(`/t/${tid}/admin/services/`);
   } catch (err) {
     console.error('Error updating service:', err);
     saving.value = false;

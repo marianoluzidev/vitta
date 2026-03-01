@@ -1,6 +1,6 @@
 <template>
-  <f7-page class="admin-page">
-    <f7-navbar title="Staff">
+  <f7-page class="admin-page tenant-login">
+    <f7-navbar title="Staff" back-link="Atrás" :back-link-url="adminSettingsUrl">
       <f7-nav-right>
         <f7-link @click="goToNew">Nuevo</f7-link>
       </f7-nav-right>
@@ -59,6 +59,7 @@ export interface StaffMember {
 const route = useRoute();
 const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
+const adminSettingsUrl = computed(() => `/t/${tenantId.value}/?tab=admin`);
 const staffList = ref<StaffMember[]>([]);
 const loading = ref(true);
 let unsubscribe: (() => void) | null = null;

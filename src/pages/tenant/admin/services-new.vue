@@ -55,7 +55,7 @@ import { getDbInstance } from '../../../firebase/firebase';
 const route = useRoute();
 const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
-const servicesListUrl = computed(() => `/t/${tenantId.value}/?tab=services`);
+const servicesListUrl = computed(() => `/t/${tenantId.value}/admin/services/`);
 const saving = ref(false);
 
 const form = reactive({

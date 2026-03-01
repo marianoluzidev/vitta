@@ -79,7 +79,7 @@ interface ServiceItem {
 const route = useRoute();
 const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
-const staffListUrl = computed(() => `/t/${tenantId.value}/?tab=staff`);
+const staffListUrl = computed(() => `/t/${tenantId.value}/admin/staff/`);
 const saving = ref(false);
 const servicesList = ref<ServiceItem[]>([]);
 
@@ -133,7 +133,7 @@ async function handleSave(): Promise<void> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    router.push(`/t/${tid}/?tab=staff`);
+    router.push(`/t/${tid}/admin/staff/`);
   } catch (err) {
     console.error('Error creating staff:', err);
     saving.value = false;

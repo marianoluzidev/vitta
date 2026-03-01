@@ -10,13 +10,24 @@
   </f7-app>
 </template>
 <script setup lang="ts">
-  import { onMounted, watch } from 'vue';
-  import { useRoute } from 'vue-router';
+  import { onMounted, onBeforeUnmount, watch } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
   import { f7ready } from 'framework7-vue';
   import store from '@/js/store';
   import { loadAndApplyTheme, restoreDefaultBranding } from '../branding/branding';
 
   const route = useRoute();
+  const router = useRouter();
+
+  /** Intercepta clics en la flecha "atrás" de la navbar para que funcione con Vue Router en web. */
+  function handleGlobalBackClick(e: Event): void {
+    const target = (e.target as HTMLElement).closest?.('.navbar .back, .back-link');
+    if (target) {
+      e.preventDefault();
+      e.stopPropagation();
+      router.back();
+    }
+  }
 
   // Framework7 Parameters (sin router interno)
   const f7params = {
@@ -39,9 +50,29 @@
 
   watch(() => route.path, applyTenantBrandingIfNeeded, { immediate: true });
 
+  /** Comprueba actualizaciones del service worker y recarga cuando hay una nueva versión. */
+  function setupServiceWorkerUpdates(): void {
+    if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then((registration) => {
+      const onControllerChange = () => window.location.reload();
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+      const checkUpdate = () => registration.update();
+      checkUpdate();
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkUpdate();
+      });
+    });
+  }
+
   onMounted(() => {
+    document.addEventListener('click', handleGlobalBackClick, true);
+    setupServiceWorkerUpdates();
     f7ready(() => {
       applyTenantBrandingIfNeeded();
     });
+  });
+
+  onBeforeUnmount(() => {
+    document.removeEventListener('click', handleGlobalBackClick, true);
   });
 </script>

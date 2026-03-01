@@ -39,6 +39,22 @@
 .admin-shell {
   --f7-toolbar-height: 76px;
 }
+
+/* 1) El contenedor del shell reserva espacio */
 .admin-shell .page-content.admin-shell__content {
-  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom));
+  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom)) !important;
+}
+
+/* 2) Las pages internas dentro de cada tab/view TAMBIÉN deben reservar espacio */
+.admin-shell .tabs .tab .view .page .page-content {
+  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom)) !important;
+}
+
+.admin-shell .tabs .tab .view .page .page-content {
+  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom) + 8px) !important;
+}
+
+/* Evita que el tabbar tape el contenido de las páginas internas (admin-page) */
+.admin-shell .page.admin-page > .page-content {
+  padding-bottom: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom)) !important;
 }
