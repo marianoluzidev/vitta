@@ -30,7 +30,7 @@
           <div class="admin-home-booking">
             <div class="admin-home-booking-header">
               <span class="admin-home-booking-time">{{ b.startTime }} – {{ b.endTime }}</span>
-              <span v-if="b.status !== 'confirmed'" class="badge color-orange">{{ b.status }}</span>
+              <span :class="['badge', statusBadgeClass(b.status)]">{{ statusLabel(b.status) }}</span>
             </div>
             <div class="admin-home-booking-row">
               <span class="admin-home-booking-label">Staff:</span>
@@ -87,6 +87,15 @@ const todayStr = computed(() => {
 function customerLabel(c?: CustomerSnap): string {
   if (!c) return '';
   return [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Sin nombre';
+}
+function statusLabel(s: string): string {
+  const map: Record<string, string> = { confirmed: 'Confirmado', pending: 'Pendiente', cancelled: 'Cancelado', completed: 'Completado', no_show: 'No asistió' };
+  return map[s ?? ''] ?? (s || '—');
+}
+function statusBadgeClass(s: string): string {
+  if (s === 'confirmed' || s === 'completed') return 'color-green';
+  if (s === 'cancelled' || s === 'no_show') return 'color-red';
+  return 'color-orange';
 }
 
 function bookingDetailUrl(bookingId: string): string {

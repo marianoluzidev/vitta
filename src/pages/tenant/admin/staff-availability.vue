@@ -23,6 +23,13 @@
           </f7-button>
         </f7-segmented>
       </f7-block>
+      <f7-block strong inset>
+        <f7-list-item title="Día habilitado">
+          <template #after>
+            <f7-toggle :checked="dayEnabled[selectedDay]" @change="onDayEnabledChange($event)" />
+          </template>
+        </f7-list-item>
+      </f7-block>
 
       <f7-block v-if="validationError" strong inset class="availability-error-block">
         <p class="availability-error">{{ validationError }}</p>
@@ -84,6 +91,43 @@
         </div>
         <f7-button fill class="availability-add-block" @click="addBlock">Agregar bloque</f7-button>
       </f7-block>
+
+      <f7-block strong inset>
+        <p class="block-title">Excepciones (próximos 30 días)</p>
+        <f7-list v-if="exceptionsList.length > 0">
+          <f7-list-item v-for="ex in exceptionsList" :key="ex.id">
+            <template #title>
+              {{ ex.date }} — {{ ex.type === 'full_day' ? 'Día completo' : `${ex.start}–${ex.end}` }}
+            </template>
+            <template #after>
+              <f7-button small outline color="red" @click.stop="removeException(ex.id)">Eliminar</f7-button>
+            </template>
+          </f7-list-item>
+        </f7-list>
+        <f7-button fill small class="availability-add-exception" @click="showExceptionForm = true">Agregar excepción</f7-button>
+      </f7-block>
+
+      <f7-block v-if="showExceptionForm" strong inset class="availability-exception-form">
+        <p class="block-title">Nueva excepción</p>
+        <f7-list form>
+          <f7-list-input label="Fecha" type="date" v-model:value="newException.date" />
+          <f7-list-item title="Tipo">
+            <template #after>
+              <select v-model="newException.type">
+                <option value="full_day">Día completo</option>
+                <option value="range">Rango horario</option>
+              </select>
+            </template>
+          </f7-list-item>
+          <template v-if="newException.type === 'range'">
+            <f7-list-input label="Desde" type="time" v-model:value="newException.start" />
+            <f7-list-input label="Hasta" type="time" v-model:value="newException.end" />
+          </template>
+          <f7-list-input label="Motivo (opcional)" type="text" v-model:value="newException.reason" />
+        </f7-list>
+        <f7-button fill small :disabled="exceptionSaving || !canSaveException" @click="saveException">Guardar excepción</f7-button>
+        <f7-button small class="availability-cancel-exception" @click="showExceptionForm = false; clearExceptionForm()">Cancelar</f7-button>
+      </f7-block>
     </template>
   </f7-page>
 </template>
@@ -91,7 +135,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
 
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -108,6 +152,15 @@ interface ScheduleBlock {
 }
 
 type Schedule = Record<DayKey, ScheduleBlock[]>;
+
+interface ExceptionDoc {
+  id: string;
+  date: string;
+  type: 'full_day' | 'range';
+  start?: string | null;
+  end?: string | null;
+  reason?: string | null;
+}
 
 const dayKeys: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const dayLabels: Record<DayKey, string> = {
@@ -150,6 +203,17 @@ function validateBlock(block: ScheduleBlock): string | null {
   return null;
 }
 
+function validateBlocksNoOverlap(blocks: ScheduleBlock[]): string | null {
+  if (blocks.length <= 1) return null;
+  const sorted = [...blocks].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+  for (let i = 1; i < sorted.length; i++) {
+    if (timeToMinutes(sorted[i].start) < timeToMinutes(sorted[i - 1].end)) {
+      return 'Los bloques del mismo día no pueden superponerse.';
+    }
+  }
+  return null;
+}
+
 const route = useRoute();
 const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
@@ -160,7 +224,21 @@ const saving = ref(false);
 const staffName = ref('');
 const selectedDay = ref<DayKey>('mon');
 const schedule = reactive<Schedule>(emptySchedule());
+const dayEnabled = reactive<Record<DayKey, boolean>>(
+  dayKeys.reduce((acc, d) => ({ ...acc, [d]: true }), {} as Record<DayKey, boolean>)
+);
 const validationError = ref('');
+
+const exceptionsList = ref<ExceptionDoc[]>([]);
+const showExceptionForm = ref(false);
+const exceptionSaving = ref(false);
+const newException = reactive({
+  date: '',
+  type: 'full_day' as 'full_day' | 'range',
+  start: '12:00',
+  end: '13:00',
+  reason: '',
+});
 
 const navbarTitle = computed(() => (staffName.value ? `Disponibilidad · ${staffName.value}` : 'Disponibilidad'));
 
@@ -204,6 +282,15 @@ function removeBlock(blockIndex: number): void {
   schedule[selectedDay.value].splice(blockIndex, 1);
 }
 
+function setDayEnabled(day: DayKey, value: boolean): void {
+  dayEnabled[day] = value;
+}
+
+function onDayEnabledChange(e: Event): void {
+  const target = e.target as HTMLInputElement;
+  if (target && selectedDay.value) setDayEnabled(selectedDay.value, !!target.checked);
+}
+
 function buildSchedulePayload(): Schedule {
   const out = emptySchedule();
   for (const d of dayKeys) {
@@ -218,12 +305,106 @@ function buildSchedulePayload(): Schedule {
 
 function validateAll(): string | null {
   for (const d of dayKeys) {
-    for (const block of schedule[d]) {
+    const blocks = schedule[d];
+    const overlapErr = validateBlocksNoOverlap(blocks);
+    if (overlapErr) return overlapErr;
+    for (const block of blocks) {
       const err = validateBlock(block);
       if (err) return err;
     }
   }
   return null;
+}
+
+const canSaveException = computed(() => {
+  if (!newException.date) return false;
+  if (newException.type === 'range') {
+    return newException.start != null && newException.end != null && newException.start < newException.end;
+  }
+  return true;
+});
+
+function clearExceptionForm(): void {
+  newException.date = '';
+  newException.type = 'full_day';
+  newException.start = '12:00';
+  newException.end = '13:00';
+  newException.reason = '';
+}
+
+async function loadExceptions(): Promise<void> {
+  const tid = tenantId.value;
+  const sid = staffId.value;
+  if (!tid || !sid) return;
+  const db = getDbInstance();
+  const from = new Date();
+  const to = new Date();
+  to.setDate(to.getDate() + 30);
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = to.toISOString().slice(0, 10);
+  const q = query(
+    collection(db, 'tenants', tid, 'staff', sid, 'exceptions'),
+    where('date', '>=', fromStr),
+    where('date', '<=', toStr)
+  );
+  const snap = await getDocs(q);
+  exceptionsList.value = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      date: data.date ?? '',
+      type: (data.type ?? 'full_day') as 'full_day' | 'range',
+      start: data.start ?? null,
+      end: data.end ?? null,
+      reason: data.reason ?? null,
+    };
+  });
+}
+
+async function saveException(): Promise<void> {
+  if (!canSaveException.value || exceptionSaving.value) return;
+  const tid = tenantId.value;
+  const sid = staffId.value;
+  if (!tid || !sid) return;
+  exceptionSaving.value = true;
+  try {
+    const db = getDbInstance();
+    const payload: Record<string, unknown> = {
+      date: newException.date,
+      type: newException.type,
+      reason: newException.reason.trim() || null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    if (newException.type === 'range') {
+      payload.start = newException.start;
+      payload.end = newException.end;
+    } else {
+      payload.start = null;
+      payload.end = null;
+    }
+    await addDoc(collection(db, 'tenants', tid, 'staff', sid, 'exceptions'), payload);
+    showExceptionForm.value = false;
+    clearExceptionForm();
+    await loadExceptions();
+  } catch (e) {
+    console.error('Error saving exception:', e);
+  } finally {
+    exceptionSaving.value = false;
+  }
+}
+
+async function removeException(exceptionId: string): Promise<void> {
+  const tid = tenantId.value;
+  const sid = staffId.value;
+  if (!tid || !sid) return;
+  try {
+    const db = getDbInstance();
+    await deleteDoc(doc(db, 'tenants', tid, 'staff', sid, 'exceptions', exceptionId));
+    await loadExceptions();
+  } catch (e) {
+    console.error('Error removing exception:', e);
+  }
 }
 
 async function handleSave(): Promise<void> {
@@ -240,9 +421,14 @@ async function handleSave(): Promise<void> {
   try {
     const db = getDbInstance();
     const staffRef = doc(db, 'tenants', tid, 'staff', sid);
+    const dayEnabledPayload: Record<string, boolean> = {};
+    dayKeys.forEach((d) => {
+      dayEnabledPayload[d] = dayEnabled[d];
+    });
     await updateDoc(staffRef, {
       timezone: 'America/Argentina/Buenos_Aires',
       schedule: buildSchedulePayload(),
+      dayEnabled: dayEnabledPayload,
       updatedAt: serverTimestamp(),
     });
     router.push(staffListUrl.value);
@@ -268,6 +454,12 @@ onMounted(async () => {
     }
     const d = staffSnap.data();
     staffName.value = [d.firstName, d.lastName].filter(Boolean).join(' ') || 'Staff';
+    const existingDayEnabled = d.dayEnabled;
+    if (existingDayEnabled && typeof existingDayEnabled === 'object') {
+      dayKeys.forEach((day) => {
+        if (typeof existingDayEnabled[day] === 'boolean') dayEnabled[day] = existingDayEnabled[day];
+      });
+    }
     const existing = d.schedule;
     if (existing && typeof existing === 'object') {
       for (const day of dayKeys) {
@@ -281,6 +473,7 @@ onMounted(async () => {
         }
       }
     }
+    await loadExceptions();
   } catch (e) {
     console.error('Error loading staff:', e);
     router.push(staffListUrl.value);
@@ -356,5 +549,15 @@ onMounted(async () => {
 .availability-days {
   flex-wrap: nowrap;
   min-width: min-content;
+}
+.availability-add-exception {
+  margin-top: 0.5rem;
+}
+.availability-exception-form .block-title {
+  margin-bottom: 0.75rem;
+}
+.availability-cancel-exception {
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
 }
 </style>

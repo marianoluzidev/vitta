@@ -1,8 +1,10 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFunctions, Functions } from 'firebase/functions';
 
 let app: FirebaseApp | null = null;
+let functions: Functions | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
@@ -22,6 +24,7 @@ export function initFirebase(): void {
     app = existingApps[0];
     auth = getAuth(app);
     db = getFirestore(app);
+    functions = getFunctions(app);
     return;
   }
 
@@ -59,6 +62,7 @@ export function initFirebase(): void {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  functions = getFunctions(app);
 }
 
 /**
@@ -81,6 +85,17 @@ export function getDbInstance(): Firestore {
     throw new Error('Firestore not initialized. Call initFirebase() first.');
   }
   return db;
+}
+
+/**
+ * Obtiene la instancia de Cloud Functions.
+ */
+export function getFunctionsInstance(): Functions {
+  if (!functions) {
+    if (app) functions = getFunctions(app);
+    else throw new Error('Firebase not initialized. Call initFirebase() first.');
+  }
+  return functions;
 }
 
 // Exportar instancias directas para conveniencia

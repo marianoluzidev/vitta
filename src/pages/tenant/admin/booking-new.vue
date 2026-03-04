@@ -115,20 +115,13 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
+import { getCurrentUser } from '../../../auth/session';
 import StaffSheetPicker from '../../../components/StaffSheetPicker.vue';
 import ClientSheetPicker from '../../../components/ClientSheetPicker.vue';
+import { computeAvailableSlots, parseTime, type Schedule } from '../../../services/slotEngine';
 
-const TZ = 'America/Argentina/Buenos_Aires';
 const SLOT_STEP = 15;
-const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
-type DayKey = (typeof DAY_KEYS)[number];
 
-function parseTime(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-}
-
-/** True if intervals overlap: newStart < existingEnd AND existingStart < newEnd */
 function timeOverlaps(
   newStartMin: number,
   newEndMin: number,
@@ -136,91 +129,6 @@ function timeOverlaps(
   existingEndMin: number
 ): boolean {
   return newStartMin < existingEndMin && existingStartMin < newEndMin;
-}
-function minutesToTime(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-function getDayKeyFromDate(dateStr: string): DayKey {
-  const d = new Date(dateStr + 'T12:00:00');
-  return DAY_KEYS[d.getDay()];
-}
-
-interface Interval {
-  start: number;
-  end: number;
-}
-function mergeIntervals(intervals: Interval[]): Interval[] {
-  if (intervals.length <= 1) return intervals;
-  const sorted = [...intervals].sort((a, b) => a.start - b.start);
-  const out: Interval[] = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = out[out.length - 1];
-    if (sorted[i].start <= last.end) {
-      last.end = Math.max(last.end, sorted[i].end);
-    } else {
-      out.push(sorted[i]);
-    }
-  }
-  return out;
-}
-function subtractIntervals(open: Interval[], busy: Interval[]): Interval[] {
-  let result: Interval[] = [...open];
-  for (const b of busy) {
-    const next: Interval[] = [];
-    for (const a of result) {
-      if (b.end <= a.start || b.start >= a.end) {
-        next.push(a);
-      } else {
-        if (a.start < b.start) next.push({ start: a.start, end: b.start });
-        if (b.end < a.end) next.push({ start: b.end, end: a.end });
-      }
-    }
-    result = next;
-  }
-  return mergeIntervals(result);
-}
-
-interface ScheduleBlock {
-  start: string;
-  end: string;
-  breaks: Array<{ start: string; end: string }>;
-}
-function getOpenIntervalsForDay(blocks: ScheduleBlock[]): Interval[] {
-  const open: Interval[] = [];
-  for (const block of blocks) {
-    const start = parseTime(block.start);
-    const end = parseTime(block.end);
-    const breakInts: Interval[] = (block.breaks || []).map((br) => ({
-      start: parseTime(br.start),
-      end: parseTime(br.end),
-    }));
-    const blockInterval = [{ start, end }];
-    const free = subtractIntervals(blockInterval, breakInts);
-    open.push(...free);
-  }
-  return mergeIntervals(open);
-}
-
-function getAvailableStartTimes(
-  openIntervals: Interval[],
-  busyIntervals: Interval[],
-  durationMinutes: number,
-  step: number
-): Array<{ start: string; end: string }> {
-  const free = subtractIntervals(openIntervals, busyIntervals);
-  const slots: Array<{ start: string; end: string }> = [];
-  for (const iv of free) {
-    let t = iv.start;
-    while (t + durationMinutes <= iv.end) {
-      const end = t + durationMinutes;
-      const overlap = busyIntervals.some((b) => !(end <= b.start || t >= b.end));
-      if (!overlap) slots.push({ start: minutesToTime(t), end: minutesToTime(end) });
-      t += step;
-    }
-  }
-  return slots;
 }
 
 const route = useRoute();
@@ -239,12 +147,14 @@ const activeStaffList = ref<Array<{ id: string; firstName: string; lastName: str
 const allServices = ref<Array<{ id: string; name: string; price: number; durationMinutes: number; active: boolean }>>([]);
 interface StaffDoc {
   serviceIds: string[];
-  schedule?: Record<string, ScheduleBlock[]>;
+  schedule?: Schedule;
+  dayEnabled?: Record<string, boolean>;
   firstName?: string;
   lastName?: string;
 }
 const selectedStaffDoc = ref<StaffDoc | null>(null);
 const bookingsForDate = ref<Array<{ startTime: string; endTime: string; status: string }>>([]);
+const exceptionsForDate = ref<Array<{ date: string; type: 'full_day' | 'range'; start?: string | null; end?: string | null }>>([]);
 
 const form = reactive({
   staffId: '',
@@ -321,29 +231,24 @@ const selectedServicesTotal = computed(() => {
   return { duration, price };
 });
 
-const openIntervalsForSelectedDay = computed(() => {
-  const staff = selectedStaffDoc.value;
-  const dayKey = form.date ? getDayKeyFromDate(form.date) : null;
-  if (!staff?.schedule || !dayKey) return [];
-  const blocks = staff.schedule[dayKey] ?? [];
-  return getOpenIntervalsForDay(blocks);
-});
-
-const busyIntervalsForDate = computed((): Interval[] => {
-  return bookingsForDate.value
-    .filter((b) => b.status !== 'cancelled')
-    .map((b) => ({ start: parseTime(b.startTime), end: parseTime(b.endTime) }));
-});
-
 const availableSlots = computed(() => {
+  const staff = selectedStaffDoc.value;
+  const date = form.date;
   const duration = selectedServicesTotal.value.duration;
-  if (duration <= 0 || openIntervalsForSelectedDay.value.length === 0) return [];
-  return getAvailableStartTimes(
-    openIntervalsForSelectedDay.value,
-    busyIntervalsForDate.value,
+  if (!staff?.schedule || !date || duration <= 0) return [];
+  const schedule = staff.schedule ?? ({} as Schedule);
+  const exceptions = exceptionsForDate.value;
+  const bookings = bookingsForDate.value;
+  const slots = computeAvailableSlots(
+    schedule,
+    exceptions,
+    bookings,
+    date,
     duration,
-    SLOT_STEP
+    SLOT_STEP,
+    staff.dayEnabled ?? undefined
   );
+  return slots.map((s) => ({ start: s.start, end: s.end }));
 });
 
 const slotQueryReady = ref(true);
@@ -353,18 +258,28 @@ watch(
     const tid = tenantId.value;
     if (!tid || !sid || !date) {
       bookingsForDate.value = [];
+      exceptionsForDate.value = [];
       return;
     }
     slotQueryReady.value = false;
     try {
       const db = getDbInstance();
-      const q = query(
-        collection(db, 'tenants', tid, 'bookings'),
-        where('staffId', '==', sid),
-        where('date', '==', date)
-      );
-      const snap = await getDocs(q);
-      bookingsForDate.value = snap.docs.map((d) => {
+      const [bookingsSnap, exceptionsSnap] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, 'tenants', tid, 'bookings'),
+            where('staffId', '==', sid),
+            where('date', '==', date)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, 'tenants', tid, 'staff', sid, 'exceptions'),
+            where('date', '==', date)
+          )
+        ),
+      ]);
+      bookingsForDate.value = bookingsSnap.docs.map((d) => {
         const data = d.data();
         return {
           startTime: data.startTime ?? '',
@@ -372,9 +287,19 @@ watch(
           status: data.status ?? '',
         };
       });
+      exceptionsForDate.value = exceptionsSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          date: data.date ?? '',
+          type: (data.type ?? 'full_day') as 'full_day' | 'range',
+          start: data.start ?? null,
+          end: data.end ?? null,
+        };
+      });
     } catch (e) {
-      console.error('Error fetching bookings:', e);
+      console.error('Error fetching bookings/exceptions:', e);
       bookingsForDate.value = [];
+      exceptionsForDate.value = [];
     } finally {
       slotQueryReady.value = true;
     }
@@ -488,6 +413,7 @@ async function handleSave(): Promise<void> {
 
     const startAt = new Date(`${date}T${startTime}:00`);
     const endAt = new Date(`${date}T${endTime}:00`);
+    const user = getCurrentUser();
     const bookingData = {
       staffId: sid,
       staffName,
@@ -511,6 +437,9 @@ async function handleSave(): Promise<void> {
         email: String(form.customer.email).trim(),
       },
       notes: String(form.notes).trim(),
+      statusHistory: [
+        { at: Timestamp.now(), from: '', to: 'confirmed', by: { type: 'admin', id: user?.uid ?? null }, note: 'created' },
+      ],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

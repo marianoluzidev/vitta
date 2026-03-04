@@ -9,15 +9,20 @@ service cloud.firestore {
       allow create, update: if request.auth != null; // Solo usuarios autenticados (validado por guard)
       allow delete: if false; // No permitir eliminar (solo desactivar)
 
-      // Staff del tenant: solo usuarios autenticados (el guard requireTenantAndAuth valida tenant + auth)
+      // Staff del tenant: lectura pública para flujo de reserva; escritura solo autenticados
       match /staff/{staffId} {
-        allow read, write: if request.auth != null;
+        allow read: if true;
+        allow write: if request.auth != null;
+        match /exceptions/{exceptionId} {
+          allow read, write: if request.auth != null;
+        }
       }
-      // Servicios del tenant
+      // Servicios del tenant: lectura pública para reserva; escritura solo autenticados
       match /services/{serviceId} {
-        allow read, write: if request.auth != null;
+        allow read: if true;
+        allow write: if request.auth != null;
       }
-      // Reservas / turnos del tenant
+      // Reservas / turnos: lectura y escritura autenticados; create permitido para público (Cloud Functions con admin)
       match /bookings/{bookingId} {
         allow read, write: if request.auth != null;
       }
@@ -29,9 +34,13 @@ service cloud.firestore {
       match /slotState/{slotStateId} {
         allow read, write: if request.auth != null;
       }
-      // Clientes del tenant
+      // Clientes del tenant: create/update vía Cloud Function para reserva pública; lectura/delete solo auth
       match /clients/{clientId} {
-        allow create, read, update, delete: if request.auth != null;
+        allow read, create, update, delete: if request.auth != null;
+      }
+      // Configuración del tenant (ej. booking: ventanas cancelación/reprogramación)
+      match /settings/{settingId} {
+        allow read, write: if request.auth != null;
       }
     }
 

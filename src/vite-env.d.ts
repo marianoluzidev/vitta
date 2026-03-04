@@ -6,6 +6,18 @@ declare module '*.vue' {
   export default component;
 }
 
+declare module '*/StaffSheetPicker.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<object, object, unknown>;
+  export default component;
+}
+
+declare module '*/ClientSheetPicker.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<object, object, unknown>;
+  export default component;
+}
+
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;

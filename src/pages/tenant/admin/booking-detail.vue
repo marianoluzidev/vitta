@@ -56,7 +56,11 @@
         <p class="block-title">Acciones</p>
         <f7-button fill small :disabled="saving" @click="setCompleted">Marcar como completado</f7-button>
         <f7-button class="margin-top" fill small :disabled="saving" @click="setNoShow">Marcar no show</f7-button>
-        <f7-button v-if="!showCancelForm" class="margin-top" fill small :disabled="saving" @click="showCancelForm = true">Cancelar turno</f7-button>
+        <f7-button v-if="!showCancelForm && canCancelByDeadline" class="margin-top" fill small :disabled="saving" @click="showCancelForm = true">Cancelar turno</f7-button>
+        <p v-else-if="canChangeStatus && !canCancelByDeadline" class="booking-detail-window-msg">Ya no se puede cancelar (ventana de {{ bookingSettings.staffCancelWindowHours }} h antes).</p>
+
+        <f7-button v-if="canRescheduleByDeadline" class="margin-top" fill small :disabled="saving" @click="showRescheduleModal = true">Reprogramar</f7-button>
+        <p v-else-if="canChangeStatus && !canRescheduleByDeadline" class="booking-detail-window-msg">Ya no se puede reprogramar (ventana de {{ bookingSettings.staffRescheduleWindowHours }} h antes).</p>
 
         <div v-if="showCancelForm" class="booking-detail-cancel-block">
           <f7-list-input
@@ -72,6 +76,36 @@
           </div>
         </div>
       </f7-block>
+
+      <!-- Modal reprogramar -->
+      <f7-popup class="booking-reschedule-popup" :opened="showRescheduleModal" @popup:closed="showRescheduleModal = false">
+        <f7-page>
+          <f7-navbar title="Reprogramar" :back-link="'Cerrar'" @back-click="showRescheduleModal = false" />
+          <f7-block strong inset>
+            <f7-list-item title="Nueva fecha">
+              <template #after>
+                <input type="date" :value="rescheduleDate" :min="todayStr" @input="onRescheduleDateInput" />
+              </template>
+            </f7-list-item>
+            <f7-list-item v-if="rescheduleDate && booking" title="Nuevo horario" group-title />
+            <f7-block v-if="rescheduleSlotsLoading && rescheduleDate" class="slot-loading"><p>Cargando...</p></f7-block>
+            <f7-block v-else-if="rescheduleSlots.length > 0" class="slot-buttons">
+              <f7-button
+                v-for="slot in rescheduleSlots"
+                :key="slot.start"
+                :fill="rescheduleStart === slot.start"
+                small
+                @click="rescheduleStart = slot.start; rescheduleEnd = slot.end"
+              >
+                {{ slot.start }} – {{ slot.end }}
+              </f7-button>
+            </f7-block>
+            <f7-block v-else-if="rescheduleDate && !rescheduleSlotsLoading"><p class="text-color-gray">Sin horarios disponibles.</p></f7-block>
+            <p v-if="rescheduleError" class="booking-detail-error">{{ rescheduleError }}</p>
+            <f7-button fill large class="margin-top" :disabled="!rescheduleDate || !rescheduleStart || saving" @click="confirmReschedule">Guardar reprogramación</f7-button>
+          </f7-block>
+        </f7-page>
+      </f7-popup>
     </template>
 
     <f7-block v-else-if="!loading" strong inset>
@@ -83,10 +117,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { doc, getDoc, updateDoc, serverTimestamp, runTransaction, type UpdateData } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, runTransaction, arrayUnion, Timestamp, type UpdateData } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
 import { getCurrentUser } from '../../../auth/session';
 import { f7ready } from 'framework7-vue';
+import { getTenantBookingSettings, canCancelByWindow, canRescheduleByWindow } from '../../../services/tenantBookingSettings';
+import { getAvailableSlots } from '../../../services/publicBookingApi';
 
 interface ServiceSnap {
   name?: string;
@@ -100,6 +136,13 @@ interface CustomerSnap {
   phone?: string;
   email?: string;
 }
+interface StatusHistoryEntry {
+  at: unknown;
+  from: string;
+  to: string;
+  by?: { type: string; id?: string | null };
+  note?: string;
+}
 interface BookingDoc {
   date: string;
   startTime: string;
@@ -112,6 +155,11 @@ interface BookingDoc {
   totalPrice?: number;
   notes?: string;
   cancelReason?: string;
+  canceledAt?: unknown;
+  canceledBy?: { type: string; id?: string | null } | null;
+  rescheduledAt?: unknown;
+  statusHistory?: StatusHistoryEntry[];
+  startAt?: { toDate?: () => Date };
   createdAt?: { toDate?: () => Date };
   updatedAt?: { toDate?: () => Date };
   staffId?: string;
@@ -129,6 +177,19 @@ const errorMessage = ref('');
 const saving = ref(false);
 const showCancelForm = ref(false);
 const cancelReason = ref('');
+const bookingSettings = ref({ staffCancelWindowHours: 2, staffRescheduleWindowHours: 2 });
+const showRescheduleModal = ref(false);
+const rescheduleDate = ref('');
+const rescheduleStart = ref('');
+const rescheduleEnd = ref('');
+const rescheduleSlots = ref<Array<{ start: string; end: string }>>([]);
+const rescheduleSlotsLoading = ref(false);
+const rescheduleError = ref('');
+
+const todayStr = computed(() => {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+});
 
 function statusLabel(s: string): string {
   const map: Record<string, string> = {
@@ -150,7 +211,26 @@ const statusBadgeClass = computed(() => {
 
 const canChangeStatus = computed(() => {
   const s = booking.value?.status ?? '';
-  return (s !== 'cancelled') && (s !== 'completed') && (s !== 'no_show');
+  return s === 'confirmed' || s === 'pending';
+});
+
+const bookingStartAt = computed((): Date | null => {
+  const b = booking.value;
+  if (!b?.startAt) return null;
+  const t = (b.startAt as { toDate?: () => Date }).toDate;
+  return typeof t === 'function' ? t() : null;
+});
+
+const canCancelByDeadline = computed(() => {
+  const start = bookingStartAt.value;
+  if (!start || !canChangeStatus.value) return false;
+  return canCancelByWindow(start, bookingSettings.value.staffCancelWindowHours);
+});
+
+const canRescheduleByDeadline = computed(() => {
+  const start = bookingStartAt.value;
+  if (!start || !canChangeStatus.value) return false;
+  return canRescheduleByWindow(start, bookingSettings.value.staffRescheduleWindowHours);
 });
 
 function customerLabel(c?: CustomerSnap): string {
@@ -169,18 +249,31 @@ function formatTimestamp(t: BookingDoc['createdAt']): string {
   return d.toLocaleString('es-AR');
 }
 
-async function updateBookingStatus(patch: UpdateData<BookingDoc>): Promise<void> {
+function pushStatusHistory(from: string, to: string, note?: string): Record<string, unknown> {
+  const user = getCurrentUser();
+  return {
+    statusHistory: arrayUnion({
+      at: Timestamp.now(),
+      from,
+      to,
+      by: { type: 'admin', id: user?.uid ?? null },
+      ...(note ? { note } : {}),
+    }),
+  };
+}
+
+async function updateBookingStatus(patch: UpdateData<BookingDoc> & { statusHistory?: unknown }): Promise<void> {
   const tid = tenantId.value;
   const bid = bookingId.value;
   if (!tid || !bid) return;
   const db = getDbInstance();
   const ref = doc(db, 'tenants', tid, 'bookings', bid);
-  const payload: UpdateData<BookingDoc> = {
+  const payload: UpdateData<BookingDoc> & Record<string, unknown> = {
     ...patch,
     updatedAt: serverTimestamp(),
   };
   const user = getCurrentUser();
-  if (user?.uid) (payload as Record<string, unknown>).updatedByUid = user.uid;
+  if (user?.uid) payload.updatedByUid = user.uid;
   await updateDoc(ref, payload);
 }
 
@@ -201,10 +294,14 @@ function setError(msg: string): void {
 
 async function setCompleted(): Promise<void> {
   if (saving.value || !booking.value) return;
+  const prev = booking.value.status || 'confirmed';
   saving.value = true;
   errorMessage.value = '';
   try {
-    await updateBookingStatus({ status: 'completed' });
+    await updateBookingStatus({
+      status: 'completed',
+      ...pushStatusHistory(prev, 'completed'),
+    });
     booking.value = { ...booking.value, status: 'completed' };
     showToast('Marcado como completado');
   } catch (e) {
@@ -217,10 +314,14 @@ async function setCompleted(): Promise<void> {
 
 async function setNoShow(): Promise<void> {
   if (saving.value || !booking.value) return;
+  const prev = booking.value.status || 'confirmed';
   saving.value = true;
   errorMessage.value = '';
   try {
-    await updateBookingStatus({ status: 'no_show' });
+    await updateBookingStatus({
+      status: 'no_show',
+      ...pushStatusHistory(prev, 'no_show'),
+    });
     booking.value = { ...booking.value, status: 'no_show' };
     showToast('Marcado como no asistió');
   } catch (e) {
@@ -247,6 +348,16 @@ async function confirmCancel(): Promise<void> {
     const lockId = `${staffId}_${date}`;
     const slotStateRef = doc(db, 'tenants', tid, 'slotState', lockId);
 
+    const prevStatus = booking.value.status || 'confirmed';
+    const user = getCurrentUser();
+    const historyEntry = {
+      at: Timestamp.now(),
+      from: prevStatus,
+      to: 'cancelled',
+      by: { type: 'admin' as const, id: user?.uid ?? null },
+      note: reason,
+    };
+
     await runTransaction(db, async (tx) => {
       const slotStateSnap = await tx.get(slotStateRef);
       const slots: Array<{ startTime: string; endTime: string }> = slotStateSnap.exists()
@@ -259,13 +370,15 @@ async function confirmCancel(): Promise<void> {
         tx.update(slotStateRef, { slots: newSlots, updatedAt: serverTimestamp() });
       }
       const bookingRef = doc(db, 'tenants', tid, 'bookings', bid);
-      const user = getCurrentUser();
-      const patch: UpdateData<BookingDoc> = {
+      const patch: UpdateData<BookingDoc> & Record<string, unknown> = {
         status: 'cancelled',
         cancelReason: reason,
+        canceledAt: serverTimestamp(),
+        canceledBy: { type: 'admin', id: user?.uid ?? null },
+        statusHistory: arrayUnion(historyEntry),
         updatedAt: serverTimestamp(),
       };
-      if (user?.uid) (patch as Record<string, unknown>).updatedByUid = user.uid;
+      if (user?.uid) patch.updatedByUid = user.uid;
       tx.update(bookingRef, patch);
     });
 
@@ -285,7 +398,7 @@ async function confirmCancel(): Promise<void> {
   }
 }
 
-function loadBooking(): void {
+async function loadBooking(): Promise<void> {
   const tid = tenantId.value;
   const bid = bookingId.value;
   if (!tid || !bid) {
@@ -296,26 +409,154 @@ function loadBooking(): void {
   loading.value = true;
   errorMessage.value = '';
   const db = getDbInstance();
-  getDoc(doc(db, 'tenants', tid, 'bookings', bid))
-    .then((snap) => {
-      if (snap.exists()) {
-        booking.value = snap.data() as BookingDoc;
-      } else {
-        booking.value = null;
-      }
-    })
-    .catch((err) => {
-      console.error('Error loading booking:', err);
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tid, 'bookings', bid));
+    if (snap.exists()) {
+      booking.value = snap.data() as BookingDoc;
+    } else {
       booking.value = null;
-      setError('Error al cargar el turno.');
-    })
-    .finally(() => {
-      loading.value = false;
-    });
+    }
+    try {
+      const settings = await getTenantBookingSettings(tid);
+      bookingSettings.value = settings;
+    } catch {
+      // Usar valores por defecto si no hay doc settings o hay error de permisos
+    }
+  } catch (err) {
+    console.error('Error loading booking:', err);
+    booking.value = null;
+    setError('Error al cargar el turno.');
+  } finally {
+    loading.value = false;
+  }
 }
 
-onMounted(loadBooking);
-watch([tenantId, bookingId], loadBooking);
+function onRescheduleDateInput(e: Event): void {
+  rescheduleDate.value = (e.target as HTMLInputElement).value ?? '';
+  rescheduleStart.value = '';
+  rescheduleEnd.value = '';
+  rescheduleSlots.value = [];
+}
+
+watch(
+  () => [rescheduleDate.value, booking.value?.staffId, booking.value?.totalDurationMinutes] as const,
+  async ([date, staffId, duration]) => {
+    const tid = tenantId.value;
+    if (!tid || !date || !staffId || !duration) {
+      rescheduleSlots.value = [];
+      return;
+    }
+    rescheduleSlotsLoading.value = true;
+    rescheduleError.value = '';
+    try {
+      const slots = await getAvailableSlots(tid, staffId, date, duration);
+      rescheduleSlots.value = slots;
+    } catch (e) {
+      rescheduleSlots.value = [];
+    } finally {
+      rescheduleSlotsLoading.value = false;
+    }
+  }
+);
+
+async function confirmReschedule(): Promise<void> {
+  const b = booking.value;
+  const tid = tenantId.value;
+  const bid = bookingId.value;
+  if (!b || !tid || !bid || !rescheduleDate.value || !rescheduleStart.value || !rescheduleEnd.value || saving.value) return;
+  saving.value = true;
+  rescheduleError.value = '';
+  try {
+    const db = getDbInstance();
+    const staffId = b.staffId ?? '';
+    const oldDate = b.date;
+    const oldStart = b.startTime ?? '';
+    const oldEnd = b.endTime ?? '';
+    const newDate = rescheduleDate.value;
+    const newStart = rescheduleStart.value;
+    const newEnd = rescheduleEnd.value;
+    const oldLockId = `${staffId}_${oldDate}`;
+    const newLockId = `${staffId}_${newDate}`;
+    const oldSlotStateRef = doc(db, 'tenants', tid, 'slotState', oldLockId);
+    const newSlotStateRef = doc(db, 'tenants', tid, 'slotState', newLockId);
+    const bookingRef = doc(db, 'tenants', tid, 'bookings', bid);
+    const user = getCurrentUser();
+    const prevStatus = b.status || 'confirmed';
+    const historyEntry = {
+      at: Timestamp.now(),
+      from: prevStatus,
+      to: 'confirmed',
+      by: { type: 'admin' as const, id: user?.uid ?? null },
+      note: 'rescheduled',
+    };
+    const newStartAt = new Date(`${newDate}T${newStart}:00`);
+    const newEndAt = new Date(`${newDate}T${newEnd}:00`);
+
+    await runTransaction(db, async (tx) => {
+      const oldSnap = await tx.get(oldSlotStateRef);
+      const oldSlots: Array<{ startTime: string; endTime: string }> = oldSnap.exists() ? (oldSnap.data().slots ?? []) : [];
+      const withoutOld = oldSlots.filter((s) => !(s.startTime === oldStart && s.endTime === oldEnd));
+      if (oldSnap.exists()) {
+        tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: serverTimestamp() });
+      }
+      const newSnap = await tx.get(newSlotStateRef);
+      const newSlots: Array<{ startTime: string; endTime: string }> = newSnap.exists() ? (newSnap.data().slots ?? []) : [];
+      const overlap = newSlots.some((s) => s.startTime === newStart && s.endTime === newEnd);
+      if (overlap) throw new Error('SLOT_TAKEN');
+      newSlots.push({ startTime: newStart, endTime: newEnd });
+      if (newSnap.exists()) tx.update(newSlotStateRef, { slots: newSlots, updatedAt: serverTimestamp() });
+      else tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: serverTimestamp() });
+      const patch: UpdateData<BookingDoc> & Record<string, unknown> = {
+        date: newDate,
+        startTime: newStart,
+        endTime: newEnd,
+        startAt: Timestamp.fromDate(newStartAt),
+        endAt: Timestamp.fromDate(newEndAt),
+        rescheduledAt: serverTimestamp(),
+        statusHistory: arrayUnion(historyEntry),
+        updatedAt: serverTimestamp(),
+      };
+      if (user?.uid) patch.updatedByUid = user.uid;
+      tx.update(bookingRef, patch);
+    });
+
+    booking.value = {
+      ...b,
+      date: newDate,
+      startTime: newStart,
+      endTime: newEnd,
+      startAt: { toDate: () => newStartAt },
+    };
+    showRescheduleModal.value = false;
+    rescheduleDate.value = '';
+    rescheduleStart.value = '';
+    rescheduleEnd.value = '';
+    rescheduleSlots.value = [];
+    showToast('Turno reprogramado');
+  } catch (e: unknown) {
+    const err = e as Error;
+    if (err?.message === 'SLOT_TAKEN') rescheduleError.value = 'Ese horario ya no está disponible.';
+    else rescheduleError.value = err?.message ?? 'No se pudo reprogramar.';
+  } finally {
+    saving.value = false;
+  }
+}
+
+onMounted(() => {
+  loadBooking();
+});
+watch([tenantId, bookingId], () => {
+  loadBooking();
+});
+
+watch(showRescheduleModal, (open) => {
+  if (open && booking.value) {
+    rescheduleDate.value = booking.value.date;
+    rescheduleStart.value = '';
+    rescheduleEnd.value = '';
+    rescheduleError.value = '';
+  }
+});
 </script>
 
 <style scoped>
@@ -362,5 +603,21 @@ watch([tenantId, bookingId], loadBooking);
 }
 .booking-detail-cancel-actions .button {
   margin-right: 0.5rem;
+}
+.booking-detail-window-msg {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--f7-block-title-color, #6d6d72);
+}
+.slot-loading {
+  margin-top: 0.5rem;
+}
+.slot-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.slot-buttons .button {
+  margin: 0;
 }
 </style>

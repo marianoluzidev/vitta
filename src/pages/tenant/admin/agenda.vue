@@ -43,9 +43,18 @@
       <p>Cargando...</p>
     </f7-block>
 
-    <f7-list v-else-if="bookings.length > 0" strong inset>
+    <template v-else-if="bookings.length > 0">
+      <f7-block strong inset>
+        <f7-list-item>
+          <template #after>
+            <f7-toggle :checked="showCancelled" @change="onToggleShowCancelled" />
+          </template>
+          <template #title>Mostrar cancelados</template>
+        </f7-list-item>
+      </f7-block>
+      <f7-list v-if="displayedBookings.length > 0" strong inset>
       <f7-list-item
-        v-for="b in bookings"
+        v-for="b in displayedBookings"
         :key="b.id"
         class="agenda-booking-item"
         link
@@ -56,7 +65,7 @@
           <div class="agenda-booking">
             <div class="agenda-booking-header">
               <span class="agenda-booking-time">{{ b.startTime }} – {{ b.endTime }}</span>
-              <span v-if="b.status !== 'confirmed'" class="badge color-orange">{{ b.status }}</span>
+              <span :class="statusBadgeClass(b.status)" class="badge">{{ statusLabel(b.status) }}</span>
             </div>
             <div class="agenda-booking-row">
               <span class="agenda-booking-label">Staff:</span>
@@ -82,7 +91,11 @@
         </template>
       </f7-list-item>
     </f7-list>
-
+      <f7-block v-else class="block-strong">
+        <p>Solo hay turnos cancelados en esta fecha.</p>
+        <p><f7-link @click="showCancelled = true">Mostrar cancelados</f7-link></p>
+      </f7-block>
+    </template>
     <f7-block v-else class="block-strong">
       <p>No hay turnos para esta fecha.</p>
     </f7-block>
@@ -134,7 +147,31 @@ const calendarYear = ref(today.getFullYear());
 const calendarMonth = ref(today.getMonth());
 const datesWithBookings = ref<Set<string>>(new Set());
 const bookings = ref<BookingItem[]>([]);
+const allBookings = ref<BookingItem[]>([]);
+const showCancelled = ref(false);
 const loading = ref(false);
+
+const displayedBookings = computed(() => {
+  if (showCancelled.value) return bookings.value;
+  return bookings.value.filter((b) => (b.status ?? '') !== 'cancelled');
+});
+
+function statusLabel(s: string): string {
+  const map: Record<string, string> = {
+    confirmed: 'Confirmado',
+    pending: 'Pendiente',
+    cancelled: 'Cancelado',
+    completed: 'Completado',
+    no_show: 'No asistió',
+  };
+  return map[s ?? ''] ?? (s || '—');
+}
+
+function statusBadgeClass(s: string): string {
+  if (s === 'confirmed' || s === 'completed') return 'color-green';
+  if (s === 'cancelled' || s === 'no_show') return 'color-red';
+  return 'color-orange';
+}
 
 const calendarMonthTitle = computed(() => `${MONTH_NAMES[calendarMonth.value]} ${calendarYear.value}`);
 
@@ -178,6 +215,11 @@ function selectDate(date: string): void {
   selectedDate.value = date;
 }
 
+function onToggleShowCancelled(e: Event): void {
+  const t = e.target as HTMLInputElement;
+  showCancelled.value = !!t?.checked;
+}
+
 function customerLabel(c?: CustomerSnap): string {
   if (!c) return '';
   return [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Sin nombre';
@@ -218,7 +260,7 @@ function loadBookings(): void {
   );
   getDocs(q)
     .then((snap) => {
-      bookings.value = snap.docs.map((doc) => {
+      const list = snap.docs.map((doc) => {
         const d = doc.data();
         return {
           id: doc.id,
@@ -232,6 +274,8 @@ function loadBookings(): void {
           servicesSnapshot: d.servicesSnapshot ?? [],
         };
       });
+      allBookings.value = list;
+      bookings.value = list;
     })
     .catch((err) => {
       console.error('Error loading bookings:', err);

@@ -1,3 +1,7 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+export default defineComponent({ name: 'StaffSheetPicker' });
+</script>
 <template>
   <f7-sheet class="staff-sheet-picker" :opened="opened" @sheet:closed="$emit('close')">
     <f7-page>
@@ -34,8 +38,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-
-defineOptions({ name: 'StaffSheetPicker' });
 
 export interface StaffOption {
   id: string;

@@ -1,3 +1,7 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+export default defineComponent({ name: 'ClientSheetPicker' });
+</script>
 <template>
   <f7-sheet class="client-sheet-picker" :opened="opened" @sheet:closed="$emit('close')">
     <f7-page>
@@ -69,8 +73,6 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { collection, getDocs, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { getDbInstance } from '../firebase/firebase';
-
-defineOptions({ name: 'ClientSheetPicker' });
 
 export interface ClientOption {
   id: string;

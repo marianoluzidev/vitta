@@ -20,6 +20,8 @@ import ClientDetailPage from '../pages/tenant/admin/client-detail.vue';
 import ClientNewPage from '../pages/tenant/admin/client-new.vue';
 import BookPage from '../pages/book.vue';
 import MyBookingsPage from '../pages/my-bookings.vue';
+import MyBookingsPublicPage from '../pages/my-bookings-public.vue';
+import ManageBookingPublicPage from '../pages/manage-booking-public.vue';
 import StorePage from '../pages/store.vue';
 import LoginPage from '../pages/login.vue';
 import AccessDeniedPage from '../pages/access-denied.vue';
@@ -86,6 +88,18 @@ const routes = [
     name: 'tenant-my-bookings',
     component: MyBookingsPage,
     beforeEnter: requireTenantAndAuth,
+  },
+  {
+    path: '/t/:tenantId/mis-turnos/',
+    name: 'tenant-mis-turnos',
+    component: MyBookingsPublicPage,
+    beforeEnter: requireTenant,
+  },
+  {
+    path: '/t/:tenantId/manage/:bookingId/',
+    name: 'tenant-manage-booking',
+    component: ManageBookingPublicPage,
+    beforeEnter: requireTenant,
   },
   {
     path: '/t/:tenantId/store/',
