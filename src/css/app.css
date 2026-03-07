@@ -1,3 +1,54 @@
+/* Admin shell: paleta suave (poco contraste), sin azul */
+.admin-shell {
+  --f7-theme-color: var(--vitta-text, #7C6A5A);
+  --f7-theme-color-rgb: 124, 106, 90;
+  --f7-link-color: var(--vitta-text, #7C6A5A);
+  --f7-block-title-color: var(--vitta-text, #7C6A5A);
+  --f7-tabbar-link-active-color: var(--vitta-text, #7C6A5A);
+  --f7-tabbar-link-inactive-color: var(--vitta-text-2, #9C8570);
+  --f7-toolbar-bg-color: var(--vitta-surface, #F0E2D6);
+}
+
+/* Texto en bloques: taupe suave */
+.admin-shell .block-title,
+.admin-shell .block .block-title,
+.admin-shell .block-strong .block-title,
+.admin-shell .block p,
+.admin-shell .block-strong p,
+.admin-shell .page-content .block-title,
+.admin-shell .page-content .block-strong .block-title,
+.admin-shell .page-content .block p,
+.admin-shell .page-content .block-strong p,
+.admin-shell .page-content .block *,
+.admin-shell .page-content .block-strong * {
+  color: var(--vitta-text, #7C6A5A) !important;
+  -webkit-text-fill-color: var(--vitta-text, #7C6A5A) !important;
+}
+
+/* Enlaces dentro del contenido */
+.admin-shell .page-content a,
+.admin-shell .page-content .link {
+  color: var(--vitta-text, #7C6A5A) !important;
+  -webkit-text-fill-color: var(--vitta-text, #7C6A5A) !important;
+}
+
+/* Tabbar: fondo y texto suaves */
+.admin-shell .toolbar.tabbar {
+  background-color: var(--vitta-surface, #F0E2D6) !important;
+  background: var(--vitta-surface, #F0E2D6) !important;
+}
+.admin-shell .toolbar.tabbar .tab-link,
+.admin-shell .toolbar.tabbar .tab-link *,
+.admin-shell .toolbar.tabbar .icon,
+.admin-shell .toolbar.tabbar .tabbar-label,
+.admin-shell .toolbar.tabbar .f7-icons,
+.admin-shell .toolbar.tabbar .material-icons,
+.admin-shell .toolbar.tabbar svg {
+  color: var(--vitta-text, #7C6A5A) !important;
+  -webkit-text-fill-color: var(--vitta-text, #7C6A5A) !important;
+  fill: var(--vitta-text, #7C6A5A) !important;
+}
+
 /* Tabbar en admin-shell: más alto, icono arriba + texto abajo */
 .admin-shell .toolbar.tabbar {
   margin-top: 10px;

@@ -3,6 +3,7 @@ import path from 'path';
 import vue from '@vitejs/plugin-vue';
 import { readFileSync } from 'fs';
 
+const { version } = require('./package.json');
 const SRC_DIR = path.resolve(__dirname, './src');
 const PUBLIC_DIR = path.resolve(__dirname, './public');
 const BUILD_DIR = path.resolve(__dirname, './www',);
@@ -54,6 +55,9 @@ export default async () => {
     envDir: ROOT_DIR, // Especificar dónde buscar el archivo .env
     base: '/',
     publicDir: PUBLIC_DIR,
+    define: {
+      __APP_VERSION__: JSON.stringify(version),
+    },
     build: {
       outDir: BUILD_DIR,
       assetsInlineLimit: 0,

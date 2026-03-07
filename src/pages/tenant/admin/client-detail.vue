@@ -1,75 +1,88 @@
 <template>
   <f7-page class="admin-page tenant-login">
-    <f7-navbar title="Editar cliente" back-link="Atrás" :back-link-url="clientViewUrl">
-      <f7-nav-right>
-        <f7-link @click="handleSave" :disabled="saving || !hasChanges">Guardar</f7-link>
-      </f7-nav-right>
-    </f7-navbar>
+    <f7-navbar title="Editar cliente" back-link="Atrás" :back-link-url="clientViewUrl" />
 
-    <f7-block v-if="errorMessage" strong inset class="client-detail-error-block">
-      <p class="client-detail-error">{{ errorMessage }}</p>
-    </f7-block>
+    <div class="ds-page-content">
+      <VCard v-if="errorMessage" error>
+        <p class="ds-error-text">{{ errorMessage }}</p>
+      </VCard>
 
-    <f7-block v-if="loading" strong inset>
-      <p>Cargando...</p>
-    </f7-block>
+      <VCard v-if="loading">
+        <p class="ds-muted">Cargando...</p>
+      </VCard>
 
-    <f7-block v-else-if="clientLoaded" strong inset>
-      <f7-list form>
-        <f7-list-input
-          label="Nombre"
-          type="text"
-          placeholder="Ej. Juan"
-          v-model:value="form.firstName"
-          clear-button
-          :disabled="saving"
-        />
-        <f7-list-input
-          label="Apellido"
-          type="text"
-          placeholder="Ej. Pérez"
-          v-model:value="form.lastName"
-          clear-button
-          :disabled="saving"
-        />
-        <f7-list-input
-          label="DNI"
-          type="text"
-          placeholder="Ej. 12345678"
-          v-model:value="form.dni"
-          clear-button
-          :disabled="saving"
-        />
-        <f7-list-input
-          label="Teléfono"
-          type="tel"
-          placeholder="Ej. +54 11 1234-5678"
-          v-model:value="form.phone"
-          clear-button
-          :disabled="saving"
-        />
-        <f7-list-input
-          label="Email"
-          type="email"
-          placeholder="ejemplo@email.com"
-          v-model:value="form.email"
-          clear-button
-          :disabled="saving"
-        />
-        <f7-list-input
-          label="Notas"
-          type="textarea"
-          placeholder="Notas internas"
-          v-model:value="form.notes"
-          clear-button
-          :disabled="saving"
-        />
-      </f7-list>
-    </f7-block>
+      <VCard v-else-if="clientLoaded">
+        <VFormField label="Nombre">
+          <input
+            v-model="form.firstName"
+            type="text"
+            placeholder="Ej. Juan"
+            class="ds-input"
+            :disabled="saving"
+          />
+        </VFormField>
+        <VFormField label="Apellido">
+          <input
+            v-model="form.lastName"
+            type="text"
+            placeholder="Ej. Pérez"
+            class="ds-input"
+            :disabled="saving"
+          />
+        </VFormField>
+        <VFormField label="DNI">
+          <input
+            v-model="form.dni"
+            type="text"
+            placeholder="Ej. 12345678"
+            class="ds-input"
+            :disabled="saving"
+          />
+        </VFormField>
+        <VFormField label="Teléfono">
+          <input
+            v-model="form.phone"
+            type="tel"
+            placeholder="Ej. +54 11 1234-5678"
+            class="ds-input"
+            :disabled="saving"
+          />
+        </VFormField>
+        <VFormField label="Email">
+          <input
+            v-model="form.email"
+            type="email"
+            placeholder="ejemplo@email.com"
+            class="ds-input"
+            :disabled="saving"
+          />
+        </VFormField>
+        <VFormField label="Notas">
+          <textarea
+            v-model="form.notes"
+            placeholder="Notas internas"
+            class="ds-textarea"
+            rows="3"
+            :disabled="saving"
+          />
+        </VFormField>
+      </VCard>
 
-    <f7-block v-else-if="!loading" strong inset>
-      <p>No se encontró el cliente.</p>
-    </f7-block>
+      <VCard v-else-if="!loading">
+        <p class="ds-muted">No se encontró el cliente.</p>
+      </VCard>
+
+      <div class="ds-spacer" />
+    </div>
+
+    <VFixedFooter v-if="clientLoaded">
+      <VPrimaryButton
+        :label="saving ? 'Guardando...' : 'Guardar'"
+        :disabled="saving || !hasChanges"
+        full-width
+        @click="handleSave"
+      />
+    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -79,6 +92,10 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
 import { f7ready } from 'framework7-vue';
+import VCard from '../../../components/ui/VCard.vue';
+import VFormField from '../../../components/ui/VFormField.vue';
+import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
+import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -243,12 +260,43 @@ watch([tenantId, clientId], loadClient);
 </script>
 
 <style scoped>
-.client-detail-error-block {
-  margin-bottom: 0;
+.ds-page-content {
+  padding: var(--ds-space-2) var(--ds-space-2) 100px;
 }
-.client-detail-error {
+.ds-error-text {
   margin: 0;
   color: var(--f7-color-red);
-  font-size: 0.95rem;
+  font-size: var(--ds-font-title);
+  font-weight: 500;
+}
+.ds-muted {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-input {
+  width: 100%;
+  font-size: var(--ds-font-body);
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  background: var(--f7-page-bg-color, #f2f2f7);
+  color: var(--f7-text-color, #000);
+  box-sizing: border-box;
+}
+.ds-textarea {
+  width: 100%;
+  font-size: var(--ds-font-body);
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  background: var(--f7-page-bg-color, #f2f2f7);
+  color: var(--f7-text-color, #000);
+  resize: vertical;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+.ds-spacer {
+  height: var(--ds-space-1);
 }
 </style>

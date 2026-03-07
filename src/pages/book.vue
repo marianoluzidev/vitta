@@ -2,121 +2,178 @@
   <f7-page class="public-book-page tenant-login">
     <f7-navbar :title="tenantName ? `Reservar · ${tenantName}` : 'Reservar turno'" />
 
-    <f7-block v-if="checkingTenant" class="block-strong">
-      <p>Cargando...</p>
-    </f7-block>
+    <div v-if="checkingTenant" class="ds-page-content">
+      <VCard>
+        <p class="ds-muted">Cargando...</p>
+      </VCard>
+    </div>
 
     <template v-else>
-      <!-- Progress -->
-      <f7-block strong class="wizard-progress">
-        <f7-segmented strong>
-          <f7-button :fill="step === 1" small>Paso 1</f7-button>
-          <f7-button :fill="step === 2" small>Paso 2</f7-button>
-          <f7-button :fill="step === 3" small>Paso 3</f7-button>
-        </f7-segmented>
-      </f7-block>
-
-      <!-- Step 1: Servicios + Staff + Fecha + Hora -->
-      <f7-block v-show="step === 1" strong inset>
-        <p class="block-title">Elegí servicios y horario</p>
-        <f7-list v-if="services.length > 0">
-          <f7-list-item v-for="svc in services" :key="svc.id" :title="svc.name" checkbox :checked="form.serviceIds.includes(svc.id)" @change="toggleService(svc.id)">
-            <template #after>{{ svc.durationMinutes }} min · {{ formatPrice(svc.price) }}</template>
-          </f7-list-item>
-        </f7-list>
-        <p v-else class="text-color-gray">No hay servicios cargados.</p>
-
-        <f7-list-item v-if="staffList.length > 0" title="Profesional" group-title />
-        <f7-list v-if="staffList.length > 0">
-          <f7-list-item
-            v-for="s in staffList"
-            :key="s.id"
-            :title="fullName(s)"
-            :link="form.staffId !== s.id"
-            :class="{ 'item-selected': form.staffId === s.id }"
-            @click="selectStaff(s.id)"
+      <div class="ds-page-content">
+        <div v-if="logoUrl" class="book-logo-wrap">
+          <img
+            :src="logoUrl"
+            :alt="`Logo de ${tenantName}`"
+            class="book-logo"
+            @error="onLogoError"
           />
-        </f7-list>
+        </div>
+        <!-- Progress -->
+        <VCard>
+          <div class="book-wizard-steps">
+            <button type="button" :class="['book-step-dot', { 'book-step-dot--active': step === 1 }]" @click="step = 1">1</button>
+            <button type="button" :class="['book-step-dot', { 'book-step-dot--active': step === 2 }]" @click="step = 2">2</button>
+            <button type="button" :class="['book-step-dot', { 'book-step-dot--active': step === 3 }]" @click="step = 3">3</button>
+          </div>
+          <p class="ds-caption">Paso {{ step }} de 3</p>
+        </VCard>
 
-        <f7-list-item title="Fecha" />
-        <f7-list-item>
-          <template #after>
-            <input type="date" :value="form.date" :min="minDate" :max="maxDate" @input="onDateInput" />
+        <!-- Step 1: Servicios + Staff + Fecha + Hora -->
+        <VCard v-show="step === 1">
+          <VSectionTitle>Elegí servicios y horario</VSectionTitle>
+          <template v-if="services.length > 0">
+            <div v-for="svc in services" :key="svc.id" class="book-service-row">
+              <label class="book-service-label">
+                <input type="checkbox" :checked="form.serviceIds.includes(svc.id)" class="book-checkbox" @change="toggleService(svc.id)" />
+                <span class="book-service-name">{{ svc.name }}</span>
+              </label>
+              <div class="book-service-meta">
+                <span class="book-service-duration">{{ svc.durationMinutes }} min</span>
+                <span class="book-service-price">{{ formatPrice(svc.price) }}</span>
+              </div>
+            </div>
           </template>
-        </f7-list-item>
+          <p v-else class="ds-muted">No hay servicios cargados.</p>
 
-        <template v-if="form.staffId && form.date && totalDuration > 0">
-          <f7-list-item title="Horario" group-title />
-          <f7-block v-if="slotsLoading" class="slot-loading"><p>Cargando horarios...</p></f7-block>
-          <f7-block v-else-if="availableSlots.length > 0" class="slot-buttons">
-            <f7-button
-              v-for="slot in availableSlots"
-              :key="slot.start"
-              :fill="form.startTime === slot.start"
-              small
-              @click="selectSlot(slot.start, slot.end)"
-            >
-              {{ slot.start }} – {{ slot.end }}
-            </f7-button>
-          </f7-block>
-          <f7-block v-else><p class="text-color-gray">Sin horarios disponibles para esta fecha.</p></f7-block>
-        </template>
+          <template v-if="staffList.length > 0">
+            <p class="ds-label book-label-top">Profesional</p>
+            <div class="book-staff-list">
+              <button
+                v-for="s in staffList"
+                :key="s.id"
+                type="button"
+                :class="['book-staff-btn', { 'book-staff-btn--active': form.staffId === s.id }]"
+                @click="selectStaff(s.id)"
+              >
+                {{ fullName(s) }}
+              </button>
+            </div>
+          </template>
 
-        <f7-button v-if="step === 1" fill large class="margin-top" :disabled="!canAdvanceStep1" @click="step = 2">Siguiente</f7-button>
-      </f7-block>
+          <VFormField label="Fecha">
+            <input type="date" :value="form.date" :min="minDate" :max="maxDate" class="ds-input" @input="onDateInput" />
+          </VFormField>
 
-      <!-- Step 2: DNI + datos cliente -->
-      <f7-block v-show="step === 2" strong inset>
-        <p class="block-title">Tus datos</p>
-        <f7-list form>
-          <f7-list-input
-            label="DNI (obligatorio)"
-            type="text"
-            inputmode="numeric"
-            v-model:value="form.client.dni"
-            placeholder="Solo números"
-            @blur="lookupDni"
-          />
-          <f7-block v-if="clientFound" class="client-found"><p>Cliente encontrado. Podés editar los datos abajo.</p></f7-block>
-          <f7-list-input label="Nombre" type="text" v-model:value="form.client.firstName" placeholder="Nombre" />
-          <f7-list-input label="Apellido" type="text" v-model:value="form.client.lastName" placeholder="Apellido" />
-          <f7-list-input label="Teléfono" type="tel" v-model:value="form.client.phone" placeholder="Opcional" />
-          <f7-list-input label="Email" type="email" v-model:value="form.client.email" placeholder="Para confirmación por email" />
-        </f7-list>
-        <f7-block v-if="step2Error" class="error-block"><p>{{ step2Error }}</p></f7-block>
-        <f7-button v-if="step === 2" fill large class="margin-top" :disabled="!canAdvanceStep2" @click="validateStep2AndAdvance">Siguiente</f7-button>
-        <f7-button class="margin-top" outline @click="step = 1">Atrás</f7-button>
-      </f7-block>
+          <template v-if="form.staffId && form.date && totalDuration > 0">
+            <p class="ds-label book-label-top">Horario</p>
+            <p v-if="slotsLoading" class="ds-muted">Cargando horarios...</p>
+            <div v-else-if="availableSlots.length > 0" class="book-slot-buttons">
+              <button
+                v-for="slot in availableSlots"
+                :key="slot.start"
+                type="button"
+                :class="['book-slot-btn', { 'book-slot-btn--active': form.startTime === slot.start }]"
+                @click="selectSlot(slot.start, slot.end)"
+              >
+                {{ slot.start }} – {{ slot.end }}
+              </button>
+            </div>
+            <p v-else class="ds-muted">Sin horarios disponibles para esta fecha.</p>
+          </template>
+        </VCard>
 
-      <!-- Step 3: Confirmación -->
-      <f7-block v-show="step === 3" strong inset>
-        <p class="block-title">Confirmar reserva</p>
-        <f7-list>
-          <f7-list-item title="Servicios" :after="summaryServices" />
-          <f7-list-item title="Duración" :after="`${totalDuration} min`" />
-          <f7-list-item title="Profesional" :after="summaryStaffName" />
-          <f7-list-item title="Fecha" :after="form.date" />
-          <f7-list-item title="Horario" :after="`${form.startTime} – ${form.endTime}`" />
-          <f7-list-item title="Cliente" :after="summaryClientName" />
-          <f7-list-item title="DNI" :after="form.client.dni" />
-          <f7-list-item v-if="totalPrice > 0" title="Total" :after="formatPrice(totalPrice)" />
-        </f7-list>
-        <f7-block v-if="!form.client.email.trim()" class="no-email-warn">
-          <p>No ingresaste email: no podremos enviarte confirmación por correo.</p>
-        </f7-block>
-        <f7-block v-if="confirmError" class="error-block"><p>{{ confirmError }}</p></f7-block>
-        <f7-button v-if="step === 3 && !confirmed" fill large class="margin-top" :disabled="confirming" @click="confirmBooking">Confirmar reserva</f7-button>
-        <f7-button v-if="step === 3 && !confirmed" class="margin-top" outline @click="step = 2">Atrás</f7-button>
-      </f7-block>
+        <!-- Step 2: DNI + datos cliente -->
+        <VCard v-show="step === 2">
+          <VSectionTitle>Tus datos</VSectionTitle>
+          <VFormField label="DNI (obligatorio)">
+            <input
+              v-model="form.client.dni"
+              type="text"
+              inputmode="numeric"
+              placeholder="Solo números"
+              class="ds-input"
+              @blur="lookupDni"
+            />
+          </VFormField>
+          <div v-if="clientFound" class="book-client-found">
+            <p>Cliente encontrado. Podés editar los datos abajo.</p>
+          </div>
+          <VFormField label="Nombre">
+            <input v-model="form.client.firstName" type="text" placeholder="Nombre" class="ds-input" />
+          </VFormField>
+          <VFormField label="Apellido">
+            <input v-model="form.client.lastName" type="text" placeholder="Apellido" class="ds-input" />
+          </VFormField>
+          <VFormField label="Teléfono">
+            <input v-model="form.client.phone" type="tel" placeholder="Opcional" class="ds-input" />
+          </VFormField>
+          <VFormField label="Email">
+            <input v-model="form.client.email" type="email" placeholder="Para confirmación por email" class="ds-input" />
+          </VFormField>
+          <p v-if="step2Error" class="ds-error-text">{{ step2Error }}</p>
+          <p class="book-back-link">
+            <a href="#" @click.prevent="step = 1">Atrás</a>
+          </p>
+        </VCard>
 
-      <!-- Post-confirm success -->
-      <f7-block v-if="confirmed" strong inset class="success-block">
-        <p class="block-title">Reserva confirmada</p>
-        <p>Tu turno fue registrado correctamente.</p>
-        <p v-if="form.client.email.trim()">Te enviamos un email de confirmación.</p>
-        <p><strong>Fecha:</strong> {{ form.date }} · <strong>Horario:</strong> {{ form.startTime }} – {{ form.endTime }}</p>
-        <f7-button fill large href="#" @click.prevent="goToMyBookings">Ver mis turnos</f7-button>
-      </f7-block>
+        <!-- Step 3: Confirmación -->
+        <VCard v-show="step === 3 && !confirmed">
+          <VSectionTitle>Confirmar reserva</VSectionTitle>
+          <VListItem title="Servicios"><template #after>{{ summaryServices }}</template></VListItem>
+          <VListItem title="Duración"><template #after>{{ totalDuration }} min</template></VListItem>
+          <VListItem title="Profesional"><template #after>{{ summaryStaffName }}</template></VListItem>
+          <VListItem title="Fecha"><template #after>{{ form.date }}</template></VListItem>
+          <VListItem title="Horario"><template #after>{{ form.startTime }} – {{ form.endTime }}</template></VListItem>
+          <VListItem title="Cliente"><template #after>{{ summaryClientName }}</template></VListItem>
+          <VListItem title="DNI"><template #after>{{ form.client.dni }}</template></VListItem>
+          <VListItem v-if="totalPrice > 0" title="Total"><template #after>{{ formatPrice(totalPrice) }}</template></VListItem>
+          <div v-if="!form.client.email.trim()" class="book-no-email">
+            <p>No ingresaste email: no podremos enviarte confirmación por correo.</p>
+          </div>
+          <p v-if="confirmError" class="ds-error-text">{{ confirmError }}</p>
+          <p class="book-back-link">
+            <a href="#" @click.prevent="step = 2">Atrás</a>
+          </p>
+        </VCard>
+
+        <!-- Post-confirm success -->
+        <VCard v-if="confirmed" class="book-success-card">
+          <VSectionTitle>Reserva confirmada</VSectionTitle>
+          <p class="ds-muted">Tu turno fue registrado correctamente.</p>
+          <p v-if="form.client.email.trim()" class="ds-muted">Te enviamos un email de confirmación.</p>
+          <p class="book-success-datetime"><strong>Fecha:</strong> {{ form.date }} · <strong>Horario:</strong> {{ form.startTime }} – {{ form.endTime }}</p>
+        </VCard>
+
+        <div class="ds-spacer" />
+      </div>
+
+      <!-- Fixed footer: primary action -->
+      <VFixedFooter v-if="!checkingTenant && !confirmed">
+        <VPrimaryButton
+          v-if="step === 1"
+          label="Siguiente"
+          :disabled="!canAdvanceStep1"
+          full-width
+          @click="step = 2"
+        />
+        <VPrimaryButton
+          v-else-if="step === 2"
+          label="Siguiente"
+          :disabled="!canAdvanceStep2"
+          full-width
+          @click="validateStep2AndAdvance"
+        />
+        <VPrimaryButton
+          v-else-if="step === 3"
+          :label="confirming ? 'Confirmando...' : 'Confirmar reserva'"
+          :disabled="confirming"
+          full-width
+          @click="confirmBooking"
+        />
+      </VFixedFooter>
+      <VFixedFooter v-if="!checkingTenant && confirmed">
+        <VPrimaryButton label="Ver mis turnos" full-width @click="goToMyBookings" />
+      </VFixedFooter>
     </template>
   </f7-page>
 </template>
@@ -133,6 +190,12 @@ import {
   findClientByDni,
   type SlotOption,
 } from '../services/publicBookingApi';
+import VCard from '../components/ui/VCard.vue';
+import VSectionTitle from '../components/ui/VSectionTitle.vue';
+import VFormField from '../components/ui/VFormField.vue';
+import VListItem from '../components/ui/VListItem.vue';
+import VPrimaryButton from '../components/ui/VPrimaryButton.vue';
+import VFixedFooter from '../components/ui/VFixedFooter.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -141,6 +204,15 @@ const checkingTenant = ref(true);
 const tenantName = ref('');
 
 const step = ref(1);
+const logoError = ref(false);
+const logoUrl = computed(() => {
+  const tid = tenantId.value;
+  if (!tid || logoError.value) return null;
+  return `/branding/${tid}/logo.png`;
+});
+function onLogoError(): void {
+  logoError.value = true;
+}
 const services = ref<Array<{ id: string; name: string; price: number; durationMinutes: number; active: boolean }>>([]);
 const staffList = ref<Array<{ id: string; firstName: string; lastName: string; active: boolean }>>([]);
 const availableSlots = ref<SlotOption[]>([]);
@@ -423,56 +495,194 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.public-book-page .block-title {
-  margin-bottom: 0.75rem;
+.ds-page-content {
+  padding: var(--ds-space-2) var(--ds-space-2) 100px;
+}
+.book-logo-wrap {
+  text-align: center;
+  margin-bottom: var(--ds-space-2);
+}
+.book-logo {
+  max-height: 80px;
+  max-width: 220px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: inline-block;
+}
+.ds-input {
+  width: 100%;
+  font-size: var(--ds-font-body);
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--vitta-divider, var(--f7-list-item-border-color, #e5e5ea));
+  background: var(--vitta-surface, var(--f7-page-bg-color, #f2f2f7));
+  color: var(--vitta-text, var(--f7-text-color, #333));
+  box-sizing: border-box;
+}
+.ds-caption {
+  margin: var(--ds-space-1) 0 0;
+  font-size: var(--ds-font-caption);
+  color: var(--vitta-text-2, var(--f7-block-strong-text-color, #666));
+}
+.book-wizard-steps {
+  display: flex;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-1);
+}
+.book-step-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--vitta-divider, var(--f7-list-item-border-color, #e5e5ea));
+  background: var(--vitta-surface, var(--f7-page-bg-color, #f2f2f7));
   font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--vitta-text, var(--f7-text-color, #333));
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.wizard-progress {
-  margin-bottom: 0;
+.book-step-dot--active {
+  background: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  border-color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  color: #fff;
 }
-.slot-buttons {
+.book-label-top {
+  margin: var(--ds-space-2) 0 var(--ds-space-1);
+}
+.book-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-2) 0;
+  border-bottom: 1px solid var(--vitta-divider, var(--f7-list-item-border-color, #e5e5ea));
+  cursor: pointer;
+}
+.book-service-row:last-of-type {
+  border-bottom: none;
+}
+.book-service-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.book-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+}
+.book-service-name {
+  font-size: var(--ds-font-body);
+  font-weight: var(--ds-font-weight-body);
+  color: var(--vitta-text, var(--f7-text-color, #333));
+}
+.book-service-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.book-service-duration {
+  font-size: var(--ds-font-caption);
+  opacity: 0.75;
+  color: var(--vitta-text-2, var(--f7-block-strong-text-color, #666));
+}
+.book-service-price {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--vitta-text, var(--f7-text-color, #333));
+}
+.book-staff-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--ds-space-1);
 }
-.slot-buttons .button {
-  margin: 0;
+.book-staff-btn {
+  padding: var(--ds-space-1) var(--ds-space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--vitta-divider, var(--f7-list-item-border-color, #e5e5ea));
+  background: var(--vitta-surface, var(--f7-page-bg-color, #f2f2f7));
+  color: var(--vitta-text, var(--f7-text-color, #333));
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.slot-loading {
-  margin-top: 0.5rem;
-}
-.client-found {
-  background: var(--vitta-accent, #34c759);
+.book-staff-btn--active {
+  background: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  border-color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
   color: #fff;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  margin: 0.5rem 0;
 }
-.client-found p {
+.book-slot-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-1);
+}
+.book-slot-btn {
+  padding: var(--ds-space-1) var(--ds-space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--vitta-divider, var(--f7-list-item-border-color, #e5e5ea));
+  background: var(--vitta-surface, var(--f7-page-bg-color, #f2f2f7));
+  color: var(--vitta-text, var(--f7-text-color, #333));
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.book-slot-btn--active {
+  background: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  border-color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  color: #fff;
+}
+.book-back-link {
+  margin: var(--ds-space-2) 0 0;
+  font-size: 0.9375rem;
+}
+.book-back-link a {
+  color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
+  text-decoration: none;
+}
+.book-client-found {
+  background: var(--vitta-accent, var(--f7-color-green, #B3C9B6));
+  color: #fff;
+  border-radius: var(--ds-input-radius);
+  padding: var(--ds-space-2);
+  margin: var(--ds-space-2) 0;
+}
+.book-client-found p {
   margin: 0;
   font-size: 0.9rem;
 }
-.error-block p {
-  margin: 0;
-  color: var(--f7-color-red);
-  font-size: 0.9rem;
+.book-no-email {
+  background: rgba(217, 196, 180, 0.5);
+  border-radius: var(--ds-input-radius);
+  padding: var(--ds-space-2);
+  margin: var(--ds-space-2) 0;
+  border: 1px solid var(--vitta-divider, #E0D3C9);
 }
-.no-email-warn {
-  background: #fff3cd;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-}
-.no-email-warn p {
+.book-no-email p {
   margin: 0;
   font-size: 0.85rem;
+  color: var(--vitta-text, #333);
 }
-.success-block .block-title {
-  color: var(--vitta-accent, #34c759);
+.book-success-card .v-section-title {
+  color: var(--vitta-accent, #B3C9B6);
 }
-.item-selected {
-  font-weight: 600;
+.book-success-datetime {
+  margin: var(--ds-space-2) 0 0;
+  font-size: var(--ds-font-body);
 }
-.margin-top {
-  margin-top: 1rem;
+.ds-spacer {
+  height: var(--ds-space-1);
+}
+:deep(.v-list-item__after) {
+  color: var(--vitta-text, var(--f7-text-color, #333));
+  opacity: 1;
 }
 </style>

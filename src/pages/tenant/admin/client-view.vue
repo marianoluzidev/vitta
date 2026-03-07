@@ -1,33 +1,45 @@
 <template>
   <f7-page class="admin-page tenant-login">
-    <f7-navbar title="Cliente" back-link="Atrás" :back-link-url="clientsListUrl">
-      <f7-nav-right>
-        <f7-link @click="goToEdit">Editar</f7-link>
-      </f7-nav-right>
-    </f7-navbar>
+    <f7-navbar title="Cliente" back-link="Atrás" :back-link-url="clientsListUrl" />
 
-    <f7-block v-if="loading" strong inset>
-      <p>Cargando...</p>
-    </f7-block>
+    <div class="ds-page-content">
+      <VCard v-if="loading">
+        <p class="ds-muted">Cargando...</p>
+      </VCard>
 
-    <f7-block v-else-if="client" strong inset>
-      <f7-list>
-        <f7-list-item title="Nombre" :after="client.firstName || '—'" />
-        <f7-list-item title="Apellido" :after="client.lastName || '—'" />
-        <f7-list-item title="DNI" :after="client.dni || '—'" />
-        <f7-list-item title="Teléfono" :after="client.phone || '—'" />
-        <f7-list-item title="Email" :after="client.email || '—'" />
-        <f7-list-item v-if="client.notes" title="Notas">
+      <VCard v-else-if="client">
+        <VListItem title="Nombre">
+          <template #after>{{ client.firstName || '—' }}</template>
+        </VListItem>
+        <VListItem title="Apellido">
+          <template #after>{{ client.lastName || '—' }}</template>
+        </VListItem>
+        <VListItem title="DNI">
+          <template #after>{{ client.dni || '—' }}</template>
+        </VListItem>
+        <VListItem title="Teléfono">
+          <template #after>{{ client.phone || '—' }}</template>
+        </VListItem>
+        <VListItem title="Email">
+          <template #after>{{ client.email || '—' }}</template>
+        </VListItem>
+        <VListItem v-if="client.notes" title="Notas">
           <template #after>
             <span class="client-view-notes">{{ client.notes }}</span>
           </template>
-        </f7-list-item>
-      </f7-list>
-    </f7-block>
+        </VListItem>
+      </VCard>
 
-    <f7-block v-else-if="!loading" strong inset>
-      <p>No se encontró el cliente.</p>
-    </f7-block>
+      <VCard v-else-if="!loading">
+        <p class="ds-muted">No se encontró el cliente.</p>
+      </VCard>
+
+      <div class="ds-spacer" />
+    </div>
+
+    <VFixedFooter v-if="client">
+      <VPrimaryButton label="Editar" full-width @click="goToEdit" />
+    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -36,6 +48,10 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
+import VCard from '../../../components/ui/VCard.vue';
+import VListItem from '../../../components/ui/VListItem.vue';
+import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
+import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 
 interface ClientData {
   firstName?: string;
@@ -94,9 +110,24 @@ watch([tenantId, clientId], loadClient);
 </script>
 
 <style scoped>
+.ds-page-content {
+  padding: var(--ds-space-2) var(--ds-space-2) 100px;
+}
+.ds-muted {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-spacer {
+  height: var(--ds-space-1);
+}
 .client-view-notes {
   white-space: pre-wrap;
   text-align: right;
   max-width: 60%;
+}
+:deep(.v-list-item__after) {
+  color: var(--f7-text-color, #000);
+  opacity: 1;
 }
 </style>

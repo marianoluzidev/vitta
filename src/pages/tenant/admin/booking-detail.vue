@@ -21,10 +21,10 @@
 
       <f7-list strong inset>
         <f7-list-item title="Staff" :after="booking.staffName || '—'" />
-        <f7-list-item title="Cliente" :after="customerLabel(booking.customer)" />
-        <f7-list-item v-if="booking.customer?.dni" title="DNI" :after="booking.customer.dni" />
-        <f7-list-item v-if="booking.customer?.phone" title="Teléfono" :after="booking.customer.phone" />
-        <f7-list-item v-if="booking.customer?.email" title="Email" :after="booking.customer.email" />
+        <f7-list-item title="Cliente" :after="customerLabel(bookingCustomer)" />
+        <f7-list-item v-if="bookingCustomer?.dni" title="DNI" :after="bookingCustomer.dni" />
+        <f7-list-item v-if="bookingCustomer?.phone" title="Teléfono" :after="bookingCustomer.phone" />
+        <f7-list-item v-if="bookingCustomer?.email" title="Email" :after="bookingCustomer.email" />
       </f7-list>
 
       <f7-block v-if="booking.servicesSnapshot?.length" strong inset>
@@ -54,7 +54,8 @@
       <!-- Actions: only when not already completed/cancelled/no_show -->
       <f7-block v-if="canChangeStatus" strong inset>
         <p class="block-title">Acciones</p>
-        <f7-button fill small :disabled="saving" @click="setCompleted">Marcar como completado</f7-button>
+        <f7-button v-if="isPending" fill small :disabled="saving" @click="setConfirmed">Confirmar turno</f7-button>
+        <f7-button fill small :disabled="saving" class="margin-top" @click="setCompleted">Marcar como completado</f7-button>
         <f7-button class="margin-top" fill small :disabled="saving" @click="setNoShow">Marcar no show</f7-button>
         <f7-button v-if="!showCancelForm && canCancelByDeadline" class="margin-top" fill small :disabled="saving" @click="showCancelForm = true">Cancelar turno</f7-button>
         <p v-else-if="canChangeStatus && !canCancelByDeadline" class="booking-detail-window-msg">Ya no se puede cancelar (ventana de {{ bookingSettings.staffCancelWindowHours }} h antes).</p>
@@ -150,6 +151,7 @@ interface BookingDoc {
   status: string;
   staffName?: string;
   customer?: CustomerSnap;
+  clientSnapshot?: CustomerSnap;
   servicesSnapshot?: ServiceSnap[];
   totalDurationMinutes?: number;
   totalPrice?: number;
@@ -214,11 +216,26 @@ const canChangeStatus = computed(() => {
   return s === 'confirmed' || s === 'pending';
 });
 
+const isPending = computed(() => (booking.value?.status ?? '') === 'pending');
+
+const bookingCustomer = computed((): CustomerSnap | undefined => {
+  const b = booking.value;
+  return b?.customer ?? b?.clientSnapshot;
+});
+
 const bookingStartAt = computed((): Date | null => {
   const b = booking.value;
-  if (!b?.startAt) return null;
-  const t = (b.startAt as { toDate?: () => Date }).toDate;
-  return typeof t === 'function' ? t() : null;
+  const raw = b?.startAt;
+  if (!raw) return null;
+  try {
+    const toDate = (raw as { toDate?: () => Date }).toDate;
+    if (typeof toDate === 'function') return toDate.call(raw);
+    const sec = (raw as { seconds?: number }).seconds;
+    if (typeof sec === 'number') return new Date(sec * 1000);
+  } catch {
+    return null;
+  }
+  return null;
 });
 
 const canCancelByDeadline = computed(() => {
@@ -290,6 +307,26 @@ function showToast(text: string): void {
 
 function setError(msg: string): void {
   errorMessage.value = msg;
+}
+
+async function setConfirmed(): Promise<void> {
+  if (saving.value || !booking.value) return;
+  const prev = booking.value.status || 'pending';
+  saving.value = true;
+  errorMessage.value = '';
+  try {
+    await updateBookingStatus({
+      status: 'confirmed',
+      ...pushStatusHistory(prev, 'confirmed'),
+    });
+    booking.value = { ...booking.value, status: 'confirmed' };
+    showToast('Turno confirmado');
+  } catch (e) {
+    console.error(e);
+    setError('No se pudo actualizar. Intentá de nuevo.');
+  } finally {
+    saving.value = false;
+  }
 }
 
 async function setCompleted(): Promise<void> {

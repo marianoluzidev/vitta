@@ -1,43 +1,48 @@
+
 <template>
   <f7-page class="admin-page">
-    <f7-navbar title="Clientes">
-      <f7-nav-right>
-        <f7-link @click="goToNew">Nuevo</f7-link>
-      </f7-nav-right>
-    </f7-navbar>
+    <f7-navbar title="Clientes" />
 
-    <f7-searchbar
-      v-model:value="searchQuery"
-      placeholder="Buscar por nombre, apellido o DNI"
-      :disable-button="false"
-      class="clients-searchbar"
-    />
+    <div class="ds-page-content">
+      <VCard>
+        <f7-searchbar
+          v-model:value="searchQuery"
+          placeholder="Buscar por nombre, apellido o DNI"
+          :disable-button="false"
+          class="clients-searchbar"
+        />
+      </VCard>
 
-    <f7-block v-if="loading" class="block-strong">
-      <p>Cargando...</p>
-    </f7-block>
+      <VCard v-if="loading">
+        <p class="ds-muted">Cargando...</p>
+      </VCard>
 
-    <f7-list v-else-if="filteredClients.length > 0" strong inset class="clients-list">
-      <f7-list-item
-        v-for="client in filteredClients"
-        :key="client.id"
-        link
-        :href="clientDetailUrl(client.id)"
-        @click.prevent="goToDetail(client.id)"
-      >
-        <template #default>
-          <div class="clients-list-cell">
-            <span class="clients-list-title">{{ displayName(client) }}</span>
-            <span v-if="client.dni" class="clients-list-dni">{{ client.dni }}</span>
-          </div>
-        </template>
-      </f7-list-item>
-    </f7-list>
+      <VCard v-else-if="filteredClients.length > 0" class="clients-list-card">
+        <a
+          v-for="client in filteredClients"
+          :key="client.id"
+          :href="clientDetailUrl(client.id)"
+          class="clients-list-item"
+          @click.prevent="goToDetail(client.id)"
+        >
+          <VListItem
+            :title="displayName(client)"
+            :subtitle="client.dni"
+          />
+        </a>
+      </VCard>
 
-    <f7-block v-else class="block-strong">
-      <p>{{ searchQuery.trim() ? 'Ningún cliente coincide con la búsqueda.' : 'No hay clientes todavía.' }}</p>
-      <p v-if="!searchQuery.trim()"><f7-link @click="goToNew">Agregar cliente</f7-link></p>
-    </f7-block>
+      <VCard v-else>
+        <p class="ds-muted">{{ searchQuery.trim() ? 'Ningún cliente coincide con la búsqueda.' : 'No hay clientes todavía.' }}</p>
+        <f7-link v-if="!searchQuery.trim()" class="ds-link" @click="goToNew">Agregar cliente</f7-link>
+      </VCard>
+
+      <div class="ds-spacer" />
+    </div>
+
+    <VFixedFooter>
+      <VPrimaryButton label="Nuevo cliente" full-width @click="goToNew" />
+    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -46,6 +51,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
+import VCard from '../../../components/ui/VCard.vue';
+import VListItem from '../../../components/ui/VListItem.vue';
+import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
+import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 
 export interface ClientItem {
   id: string;
@@ -140,20 +149,36 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.ds-page-content {
+  padding: var(--ds-space-2) var(--ds-space-2) 100px;
+}
+.ds-muted {
+  margin: 0 0 var(--ds-space-1);
+  font-size: 0.9375rem;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-link {
+  font-size: 0.9375rem;
+  margin-top: var(--ds-space-1);
+  display: inline-block;
+}
+.ds-spacer {
+  height: var(--ds-space-1);
+}
 .clients-searchbar {
-  padding: 0.5rem;
+  padding: 0;
 }
-.clients-list-cell {
-  display: flex;
-  flex-direction: column;
-  padding: 0.35rem 0;
+.clients-list-card {
+  padding: 0;
 }
-.clients-list-title {
-  font-weight: 500;
+.clients-list-item {
+  display: block;
+  padding: 0 var(--ds-card-padding);
+  border-bottom: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  text-decoration: none;
+  color: inherit;
 }
-.clients-list-dni {
-  font-size: 0.85rem;
-  color: var(--f7-block-title-color, #6d6d72);
-  margin-top: 0.2rem;
+.clients-list-item:last-child {
+  border-bottom: none;
 }
 </style>

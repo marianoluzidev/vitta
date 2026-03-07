@@ -5,6 +5,7 @@ import ControlPanelIndex from '../pages/controlPanel/index.vue';
 import ControlPanelLogin from '../pages/controlPanel/login.vue';
 import ControlPanelTenantForm from '../pages/controlPanel/tenant-form.vue';
 import TenantHomePage from '../pages/tenant/home.vue';
+import AdminLayoutPage from '../pages/admin-layout.vue';
 import AdminShellPage from '../pages/admin-shell.vue';
 import StaffListPage from '../pages/tenant/admin/staff.vue';
 import StaffNewPage from '../pages/tenant/admin/staff-new.vue';
@@ -61,9 +62,80 @@ const routes = [
   },
   {
     path: '/t/:tenantId/',
-    name: 'tenant-home',
-    component: AdminShellPage,
+    component: AdminLayoutPage,
     beforeEnter: requireTenantAndAuth,
+    children: [
+      {
+        path: '',
+        name: 'tenant-home',
+        component: AdminShellPage,
+      },
+      {
+        path: 'admin/inicio/',
+        name: 'tenant-admin-inicio',
+        component: AdminShellPage,
+      },
+      {
+        path: 'admin/staff/',
+        name: 'tenant-admin-staff-list',
+        component: StaffListPage,
+      },
+      {
+        path: 'admin/staff/new/',
+        name: 'tenant-admin-staff-new',
+        component: StaffNewPage,
+      },
+      {
+        path: 'admin/staff/:staffId/',
+        name: 'tenant-admin-staff-edit',
+        component: StaffEditPage,
+      },
+      {
+        path: 'admin/staff/:staffId/availability/',
+        name: 'tenant-admin-staff-availability',
+        component: StaffAvailabilityPage,
+      },
+      {
+        path: 'admin/services/',
+        name: 'tenant-admin-services-list',
+        component: ServicesListPage,
+      },
+      {
+        path: 'admin/services/new/',
+        name: 'tenant-admin-services-new',
+        component: ServiceNewPage,
+      },
+      {
+        path: 'admin/services/:serviceId/',
+        name: 'tenant-admin-services-edit',
+        component: ServiceEditPage,
+      },
+      {
+        path: 'admin/agenda/new/',
+        name: 'tenant-admin-agenda-booking-new',
+        component: BookingNewPage,
+      },
+      {
+        path: 'admin/agenda/booking/:bookingId/',
+        name: 'tenant-admin-agenda-booking-detail',
+        component: BookingDetailPage,
+      },
+      {
+        path: 'admin/clientes/new/',
+        name: 'tenant-admin-clientes-new',
+        component: ClientNewPage,
+      },
+      {
+        path: 'admin/clientes/:clientId/',
+        name: 'tenant-admin-clientes-detail',
+        component: ClientViewPage,
+      },
+      {
+        path: 'admin/clientes/:clientId/editar/',
+        name: 'tenant-admin-clientes-edit',
+        component: ClientDetailPage,
+      },
+    ],
   },
   {
     path: '/t/:tenantId/welcome/',
@@ -108,87 +180,13 @@ const routes = [
     beforeEnter: requireTenant,
   },
   {
+    path: '/t/:tenantId',
+    redirect: (to) => ({ path: `/t/${to.params.tenantId}/`, query: to.query }),
+  },
+  {
     path: '/t/:tenantId/admin/',
     name: 'tenant-admin',
     redirect: { name: 'tenant-home' },
-  },
-  {
-    path: '/t/:tenantId/admin/inicio/',
-    name: 'tenant-admin-inicio',
-    component: AdminShellPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/staff/',
-    name: 'tenant-admin-staff-list',
-    component: StaffListPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/staff/new/',
-    name: 'tenant-admin-staff-new',
-    component: StaffNewPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/staff/:staffId/',
-    name: 'tenant-admin-staff-edit',
-    component: StaffEditPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/staff/:staffId/availability/',
-    name: 'tenant-admin-staff-availability',
-    component: StaffAvailabilityPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/services/',
-    name: 'tenant-admin-services-list',
-    component: ServicesListPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/services/new/',
-    name: 'tenant-admin-services-new',
-    component: ServiceNewPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/services/:serviceId/',
-    name: 'tenant-admin-services-edit',
-    component: ServiceEditPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/agenda/new/',
-    name: 'tenant-admin-agenda-booking-new',
-    component: BookingNewPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/agenda/booking/:bookingId/',
-    name: 'tenant-admin-agenda-booking-detail',
-    component: BookingDetailPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/clientes/new/',
-    name: 'tenant-admin-clientes-new',
-    component: ClientNewPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/clientes/:clientId/',
-    name: 'tenant-admin-clientes-detail',
-    component: ClientViewPage,
-    beforeEnter: requireTenantAndAuth,
-  },
-  {
-    path: '/t/:tenantId/admin/clientes/:clientId/editar/',
-    name: 'tenant-admin-clientes-edit',
-    component: ClientDetailPage,
-    beforeEnter: requireTenantAndAuth,
   },
   {
     path: '/access-denied/',

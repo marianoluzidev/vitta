@@ -260,7 +260,7 @@ export const createPublicBooking = functions.https.onCall(
     const endAt = new Date(`${payload.date}T${payload.endTime}:00`);
     const publicManageToken = Array.from({ length: 48 }, () => Math.random().toString(36)[2]).join('');
     const now = admin.firestore.Timestamp.now();
-    const statusHistory = [{ at: now, from: '', to: 'confirmed', by: { type: 'client' }, note: 'created' }];
+    const statusHistory = [{ at: now, from: '', to: 'pending', by: { type: 'client' }, note: 'created' }];
     const bookingData = {
       tenantId,
       clientId,
@@ -282,7 +282,7 @@ export const createPublicBooking = functions.https.onCall(
       endTime: payload.endTime,
       startAt: admin.firestore.Timestamp.fromDate(startAt),
       endAt: admin.firestore.Timestamp.fromDate(endAt),
-      status: 'confirmed',
+      status: 'pending',
       source: 'public',
       publicManageToken,
       statusHistory,
@@ -543,8 +543,9 @@ export const rescheduleBookingPublic = functions.https.onCall(
     if ((b.publicManageToken ?? '') !== String(token).trim()) {
       throw new functions.https.HttpsError('permission-denied', 'Token inválido');
     }
-    if ((b.status ?? '') !== 'confirmed') {
-      throw new functions.https.HttpsError('failed-precondition', 'Solo se puede reprogramar un turno confirmado');
+    const status = b.status ?? '';
+    if (status !== 'confirmed' && status !== 'pending') {
+      throw new functions.https.HttpsError('failed-precondition', 'Solo se puede reprogramar un turno confirmado o pendiente');
     }
     const settings = await getTenantBookingSettings(tenantId);
     if (!settings.allowClientReschedule) {
@@ -568,7 +569,8 @@ export const rescheduleBookingPublic = functions.https.onCall(
     const newSlotStateRef = db.collection('tenants').doc(tenantId).collection('slotState').doc(newLockId);
     const newStartAt = new Date(`${newDate}T${newStartTime}:00`);
     const newEndAt = new Date(`${newDate}T${newEndTime}:00`);
-    const historyEntry = { at: admin.firestore.FieldValue.serverTimestamp(), from: 'confirmed', to: 'confirmed', by: { type: 'client' }, note: 'rescheduled' };
+    const prevStatus = b.status ?? 'pending';
+    const historyEntry = { at: admin.firestore.FieldValue.serverTimestamp(), from: prevStatus, to: prevStatus, by: { type: 'client' }, note: 'rescheduled' };
 
     await db.runTransaction(async (tx) => {
       const oldSnap = await tx.get(oldSlotStateRef);

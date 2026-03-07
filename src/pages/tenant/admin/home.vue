@@ -134,7 +134,7 @@ function loadTodayBookings() {
           endTime: d.endTime ?? '',
           staffName: d.staffName ?? '',
           status: d.status ?? '',
-          customer: d.customer,
+          customer: d.customer ?? d.clientSnapshot,
         };
       });
     })

@@ -1,0 +1,108 @@
+/**
+ * Tema admin: quitar azul de Framework7. Paleta suave, poco contraste.
+ * Colores tipo "Precios Marzo / Amate bien" (marrón taupe, fondos claros).
+ */
+
+/* Variables en el shell (por si F7 las lee después) */
+body #app .admin-shell.page,
+body #app .page.admin-shell {
+  --f7-theme-color: #7C6A5A !important;
+  --f7-link-color: #7C6A5A !important;
+  --f7-block-title-color: #7C6A5A !important;
+  --f7-tabbar-link-active-color: #7C6A5A !important;
+  --f7-tabbar-link-inactive-color: #9C8570 !important;
+  --f7-toolbar-bg-color: #F0E2D6 !important;
+}
+
+/* Cualquier texto dentro del contenido del admin (taupe suave) */
+body #app .admin-shell .page-content,
+body #app .admin-shell .page-content *,
+body #app .admin-shell .tabs .tab,
+body #app .admin-shell .tabs .tab *,
+body #app .admin-shell .view,
+body #app .admin-shell .view *,
+body #app .admin-shell .page.admin-page,
+body #app .admin-shell .page.admin-page * {
+  color: #7C6A5A !important;
+  -webkit-text-fill-color: #7C6A5A !important;
+}
+
+/* Bloques y párrafos (máxima especificidad) */
+body #app .admin-shell .block,
+body #app .admin-shell .block *,
+body #app .admin-shell .block-strong,
+body #app .admin-shell .block-strong *,
+body #app .admin-shell p.block-title,
+body #app .admin-shell .block .block-title,
+body #app .admin-shell .block-strong .block-title,
+body #app .admin-shell .block p,
+body #app .admin-shell .block-strong p {
+  color: #7C6A5A !important;
+  -webkit-text-fill-color: #7C6A5A !important;
+}
+
+/* Enlaces dentro del contenido (no navbar) */
+body #app .admin-shell .page-content a,
+body #app .admin-shell .page-content a *,
+body #app .admin-shell .tabs .tab a,
+body #app .admin-shell .tabs .tab a *,
+body #app .admin-shell .view a,
+body #app .admin-shell .view a * {
+  color: #7C6A5A !important;
+  -webkit-text-fill-color: #7C6A5A !important;
+}
+
+/* Tabbar: fondo claro y texto taupe */
+body #app .admin-shell .toolbar.tabbar,
+body #app .admin-shell .toolbar.tabbar * {
+  color: #7C6A5A !important;
+  -webkit-text-fill-color: #7C6A5A !important;
+  fill: #7C6A5A !important;
+}
+
+body #app .admin-shell .toolbar.tabbar {
+  background-color: #F0E2D6 !important;
+  background: #F0E2D6 !important;
+}
+
+/* Pestaña activa: pill suave */
+body #app .admin-shell .toolbar.tabbar .tab-link-active,
+body #app .admin-shell .toolbar.tabbar .tab-link-active * {
+  background-color: rgba(217, 196, 180, 0.6) !important;
+  color: #7C6A5A !important;
+  -webkit-text-fill-color: #7C6A5A !important;
+}
+
+/* Botones fill: fondo taupe, texto blanco para contraste (excepción al color * de arriba) */
+body #app .admin-shell .button-fill,
+body #app .admin-shell .button.button-fill,
+body #app .admin-shell .block .button-fill,
+body #app .admin-shell .block .button.button-fill,
+body #app .admin-shell .page.admin-page .button-fill,
+body #app .admin-shell .page.admin-page .button.button-fill {
+  background-color: #7C6A5A !important;
+  background: #7C6A5A !important;
+  border-color: #7C6A5A !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+body #app .admin-shell .button-fill:disabled,
+body #app .admin-shell .button.button-fill:disabled {
+  opacity: 0.65;
+  background-color: #9C8570 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Excepción: navbar y su título en blanco (misma especificidad que arriba) */
+body #app .admin-shell .navbar,
+body #app .admin-shell .navbar .navbar-title,
+body #app .admin-shell .navbar .navbar-inner,
+body #app .admin-shell .navbar .navbar-inner *,
+body #app .admin-shell .navbar .right a,
+body #app .admin-shell .navbar .right .link,
+body #app .admin-shell .page .navbar,
+body #app .admin-shell .page .navbar * {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
