@@ -295,7 +295,10 @@
 .public-book-page .v-primary-btn,
 .public-book-page .button-fill,
 .manage-booking-public-page .v-primary-btn,
-.public-my-bookings-page .v-primary-btn {
+.manage-booking-public-page .button-fill,
+.public-my-bookings-page .v-primary-btn,
+.public-my-bookings-page .button-fill,
+.public-my-bookings-page .button.button-fill {
   background-color: var(--vitta-text) !important;
   background: var(--vitta-text) !important;
   border-color: var(--vitta-text) !important;
@@ -305,7 +308,9 @@
 
 .public-book-page .v-primary-btn:disabled,
 .manage-booking-public-page .v-primary-btn:disabled,
-.public-my-bookings-page .v-primary-btn:disabled {
+.public-my-bookings-page .v-primary-btn:disabled,
+.public-my-bookings-page .button-fill:disabled,
+.public-my-bookings-page .button.button-fill:disabled {
   opacity: 0.6;
   background-color: var(--vitta-text-2) !important;
   color: #fff !important;
@@ -348,8 +353,12 @@
 }
 
 .public-book-page .book-client-found {
-  background: var(--vitta-accent);
-  color: #fff;
+  background: var(--vitta-surface);
+  color: var(--vitta-text);
+  border: 1px solid var(--vitta-divider);
+}
+.public-book-page .book-client-found p {
+  color: var(--vitta-text);
 }
 
 .public-book-page .book-success-card .v-section-title {
@@ -404,4 +413,47 @@ body .public-book-page .book-service-duration {
 
 body .public-book-page .book-checkbox {
   accent-color: #7C6A5A !important;
+}
+
+/* Modal reprogramar (detalle del turno): colores del tenant */
+.booking-reschedule-popup .button-fill,
+.booking-reschedule-popup .slot-buttons .button.button-fill,
+.booking-reschedule-popup .button.button-fill {
+  background-color: #7C6A5A !important;
+  background: #7C6A5A !important;
+  border-color: #7C6A5A !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.booking-reschedule-popup .slot-buttons .button {
+  border-color: var(--vitta-divider);
+  color: var(--vitta-text);
+}
+.booking-reschedule-popup .page-content {
+  background-color: var(--vitta-bg);
+}
+.booking-reschedule-popup .navbar,
+.booking-reschedule-popup .navbar-inner {
+  background-color: var(--vitta-navbar);
+}
+.booking-reschedule-popup .navbar .navbar-title,
+.booking-reschedule-popup .navbar .left a,
+.booking-reschedule-popup .navbar .link {
+  color: #fff;
+}
+
+/* Mis turnos: botón Buscar con colores del tenant */
+body .public-my-bookings-page .button-fill,
+body .public-my-bookings-page .button.button-fill {
+  background-color: #7C6A5A !important;
+  background: #7C6A5A !important;
+  border-color: #7C6A5A !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+body .public-my-bookings-page .button-fill:disabled,
+body .public-my-bookings-page .button.button-fill:disabled {
+  opacity: 0.6;
+  background-color: #9C8570 !important;
+  color: #fff !important;
 }

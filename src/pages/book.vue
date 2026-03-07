@@ -1,6 +1,10 @@
 <template>
   <f7-page class="public-book-page tenant-login">
-    <f7-navbar :title="tenantName ? `Reservar · ${tenantName}` : 'Reservar turno'" />
+    <f7-navbar :title="tenantName ? `Reservar · ${tenantName}` : 'Reservar turno'">
+      <f7-nav-right>
+        <f7-link href="#" @click.prevent="goToMyBookings">Mis turnos</f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div v-if="checkingTenant" class="ds-page-content">
       <VCard>
@@ -92,10 +96,14 @@
               inputmode="numeric"
               placeholder="Solo números"
               class="ds-input"
+              :disabled="lookingUpDni"
               @blur="lookupDni"
             />
           </VFormField>
-          <div v-if="clientFound" class="book-client-found">
+          <p v-if="lookingUpDni" class="book-dni-searching">
+            Buscando tus datos...
+          </p>
+          <div v-else-if="clientFound" class="book-client-found">
             <p>Cliente encontrado. Podés editar los datos abajo.</p>
           </div>
           <VFormField label="Nombre">
@@ -218,6 +226,7 @@ const staffList = ref<Array<{ id: string; firstName: string; lastName: string; a
 const availableSlots = ref<SlotOption[]>([]);
 const slotsLoading = ref(false);
 const clientFound = ref(false);
+const lookingUpDni = ref(false);
 const step2Error = ref('');
 const confirmError = ref('');
 const confirming = ref(false);
@@ -357,6 +366,7 @@ async function lookupDni(): Promise<void> {
   dniLookupTimeout = setTimeout(async () => {
     const tid = tenantId.value;
     if (!tid) return;
+    lookingUpDni.value = true;
     try {
       const client = await findClientByDni(tid, d);
       if (client) {
@@ -370,6 +380,8 @@ async function lookupDni(): Promise<void> {
       }
     } catch (e) {
       clientFound.value = false;
+    } finally {
+      lookingUpDni.value = false;
     }
     dniLookupTimeout = null;
   }, 300);
@@ -475,7 +487,8 @@ onMounted(async () => {
         price: d.data().price ?? 0,
         durationMinutes: d.data().durationMinutes ?? 0,
         active: d.data().active !== false,
-      }));
+      }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
     staffList.value = staffSnap.docs.map((d) => ({
       id: d.id,
       firstName: d.data().firstName ?? '',
@@ -648,9 +661,16 @@ onMounted(async () => {
   color: var(--vitta-text, var(--f7-theme-color, #7C6A5A));
   text-decoration: none;
 }
+.book-dni-searching {
+  margin: var(--ds-space-1) 0 var(--ds-space-2);
+  font-size: var(--ds-font-caption);
+  color: var(--vitta-text-2, #9C8570);
+  font-style: italic;
+}
 .book-client-found {
-  background: var(--vitta-accent, var(--f7-color-green, #B3C9B6));
-  color: #fff;
+  background: var(--vitta-surface, #F0E2D6);
+  color: var(--vitta-text, #7C6A5A);
+  border: 1px solid var(--vitta-divider, #E0D3C9);
   border-radius: var(--ds-input-radius);
   padding: var(--ds-space-2);
   margin: var(--ds-space-2) 0;
@@ -658,6 +678,7 @@ onMounted(async () => {
 .book-client-found p {
   margin: 0;
   font-size: 0.9rem;
+  color: var(--vitta-text, #7C6A5A);
 }
 .book-no-email {
   background: rgba(217, 196, 180, 0.5);

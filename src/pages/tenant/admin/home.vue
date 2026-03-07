@@ -1,6 +1,6 @@
 <template>
   <f7-page class="admin-page">
-    <f7-navbar :title="`Resumen del día ${appConfig.version}`" />
+    <f7-navbar title="Resumen del día" />
 
     <f7-block v-if="logoUrl" class="tenant-logo-container">
       <img
@@ -47,6 +47,9 @@
     <f7-block v-else class="block-strong">
       <p>No hay turnos para hoy.</p>
     </f7-block>
+    <f7-block class="admin-home-version">
+      <p class="ds-caption">Versión {{ appVersion }}</p>
+    </f7-block>
   </f7-page>
 </template>
 
@@ -56,7 +59,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
 import { getTenant } from '../../../tenant/tenantService';
-import { appConfig } from '../../../config.js';
+
+/** Versión inyectada en build (package.json). */
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—';
 
 interface CustomerSnap {
   firstName?: string;
@@ -189,5 +194,14 @@ onMounted(async () => {
   font-weight: 500;
   display: inline-block;
   min-width: 4.5rem;
+}
+.admin-home-version {
+  margin-top: var(--ds-space-2, 16px);
+  text-align: center;
+}
+.admin-home-version .ds-caption {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 </style>
