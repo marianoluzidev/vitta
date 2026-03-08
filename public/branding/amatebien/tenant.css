@@ -442,6 +442,28 @@ body .public-book-page .book-checkbox {
   color: #fff;
 }
 
+/* Modal extender turno */
+.extend-booking-popup .button-fill,
+.extend-booking-popup .button.button-fill {
+  background-color: #7C6A5A !important;
+  background: #7C6A5A !important;
+  border-color: #7C6A5A !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.extend-booking-popup .page-content {
+  background-color: var(--vitta-bg);
+}
+.extend-booking-popup .navbar,
+.extend-booking-popup .navbar-inner {
+  background-color: var(--vitta-navbar);
+}
+.extend-booking-popup .navbar .navbar-title,
+.extend-booking-popup .navbar .left a,
+.extend-booking-popup .navbar .link {
+  color: #fff;
+}
+
 /* Mis turnos: botón Buscar con colores del tenant */
 body .public-my-bookings-page .button-fill,
 body .public-my-bookings-page .button.button-fill {

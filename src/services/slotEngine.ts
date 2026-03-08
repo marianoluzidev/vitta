@@ -187,3 +187,34 @@ export function computeAvailableSlots(
   }
   return slots;
 }
+
+/**
+ * Devuelve los intervalos libres del día (en minutos desde 00:00),
+ * considerando disponibilidad, excepciones y otros turnos.
+ * Útil para calcular hasta dónde se puede extender un turno.
+ */
+export function getFreeIntervalsOnDay(
+  schedule: Schedule,
+  exceptions: StaffException[],
+  bookings: BookingOnDay[],
+  date: string,
+  dayEnabled?: Record<DayKey, boolean> | null
+): Interval[] {
+  const day = getWeekdayFromDate(date);
+  const blocks = schedule[day] ?? [];
+  if (dayEnabled && dayEnabled[day] === false) return [];
+  if (!blocks.length) return [];
+  const open = openIntervalsFromBlocks(blocks);
+  const blockedByExceptions: Interval[] = [];
+  for (const ex of exceptions) {
+    if (ex.type === 'full_day') return [];
+    if (ex.type === 'range' && ex.start != null && ex.end != null) {
+      blockedByExceptions.push({ start: parseTime(ex.start), end: parseTime(ex.end) });
+    }
+  }
+  const blockedByBookings: Interval[] = bookings
+    .filter((b) => (b.status ?? '') !== 'cancelled')
+    .map((b) => ({ start: parseTime(b.startTime), end: parseTime(b.endTime) }));
+  const allBlocked = mergeIntervals([...blockedFromBreaks(blocks), ...blockedByExceptions, ...blockedByBookings]);
+  return subtractIntervals(open, allBlocked);
+}

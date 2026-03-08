@@ -1,6 +1,15 @@
 <template>
   <f7-page class="booking-new-page admin-page tenant-login">
-    <f7-navbar title="Nuevo Turno" back-link="Atrás" :back-link-url="agendaListUrl" />
+    <f7-navbar title="Nuevo Turno" back-link="Atrás" :back-link-url="agendaListUrl">
+      <f7-nav-right>
+        <f7-link
+          :class="{ 'disabled': saving || !canSave }"
+          @click="onNavSave"
+        >
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div class="ds-page-content">
       <VCard v-if="slotTakenError" error>
@@ -114,15 +123,6 @@
 
       <div class="ds-spacer" />
     </div>
-
-    <VFixedFooter>
-      <VPrimaryButton
-        :label="saving ? 'Guardando...' : 'Confirmar turno'"
-        :disabled="saving || !canSave"
-        full-width
-        @click="handleSave"
-      />
-    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -149,8 +149,6 @@ import ClientSheetPicker from '../../../components/ClientSheetPicker.vue';
 import VCard from '../../../components/ui/VCard.vue';
 import VSectionTitle from '../../../components/ui/VSectionTitle.vue';
 import VListItem from '../../../components/ui/VListItem.vue';
-import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
-import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 import { computeAvailableSlots, parseTime, type Schedule } from '../../../services/slotEngine';
 
 const SLOT_STEP = 15;
@@ -416,6 +414,10 @@ onMounted(async () => {
   }
 });
 
+function onNavSave(): void {
+  if (canSave.value && !saving.value) handleSave();
+}
+
 async function handleSave(): Promise<void> {
   const tid = tenantId.value;
   if (!tid || !canSave.value || saving.value) return;
@@ -541,6 +543,10 @@ async function handleSave(): Promise<void> {
 </script>
 
 <style scoped>
+.booking-new-page .navbar .link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
 .ds-page-content {
   padding: var(--ds-space-2) var(--ds-space-2) 100px;
 }

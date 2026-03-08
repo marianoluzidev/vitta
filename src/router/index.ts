@@ -16,6 +16,7 @@ import ServiceNewPage from '../pages/tenant/admin/services-new.vue';
 import ServiceEditPage from '../pages/tenant/admin/services-edit.vue';
 import BookingNewPage from '../pages/tenant/admin/booking-new.vue';
 import BookingDetailPage from '../pages/tenant/admin/booking-detail.vue';
+import BookingExtendPage from '../pages/tenant/admin/booking-extend.vue';
 import ClientViewPage from '../pages/tenant/admin/client-view.vue';
 import ClientDetailPage from '../pages/tenant/admin/client-detail.vue';
 import ClientNewPage from '../pages/tenant/admin/client-new.vue';
@@ -119,6 +120,11 @@ const routes = [
         path: 'admin/agenda/booking/:bookingId/',
         name: 'tenant-admin-agenda-booking-detail',
         component: BookingDetailPage,
+      },
+      {
+        path: 'admin/agenda/booking/:bookingId/extend/',
+        name: 'tenant-admin-agenda-booking-extend',
+        component: BookingExtendPage,
       },
       {
         path: 'admin/clientes/new/',

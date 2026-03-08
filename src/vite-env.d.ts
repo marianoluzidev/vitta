@@ -60,6 +60,16 @@ declare module '*/VFixedFooter.vue' {
   const component: DefineComponent<object, object, unknown>;
   export default component;
 }
+declare module '*/ExtendBookingModal.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<object, object, unknown>;
+  export default component;
+}
+declare module '*/BookingExtensionTimeline.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<object, object, unknown>;
+  export default component;
+}
 
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY: string;

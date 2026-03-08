@@ -63,6 +63,8 @@
         <f7-button v-if="canRescheduleByDeadline" class="margin-top" fill small :disabled="saving" @click="showRescheduleModal = true">Reprogramar</f7-button>
         <p v-else-if="canChangeStatus && !canRescheduleByDeadline" class="booking-detail-window-msg">Ya no se puede reprogramar (ventana de {{ bookingSettings.staffRescheduleWindowHours }} h antes).</p>
 
+        <f7-button v-if="isConfirmed" class="margin-top" fill small :disabled="saving" @click="goToExtend">Extender turno</f7-button>
+
         <div v-if="showCancelForm" class="booking-detail-cancel-block">
           <label class="booking-detail-cancel-label">Motivo de cancelación</label>
           <textarea
@@ -108,6 +110,7 @@
           </f7-block>
         </f7-page>
       </f7-popup>
+
     </template>
 
     <f7-block v-else-if="!loading" strong inset>
@@ -173,6 +176,12 @@ const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
 const bookingId = computed(() => (route.params.bookingId as string) ?? '');
 const agendaUrl = computed(() => `/t/${tenantId.value}/?tab=agenda`);
+const extendBookingUrl = computed(() => `/t/${tenantId.value}/admin/agenda/booking/${bookingId.value}/extend/`);
+
+function goToExtend(): void {
+  if (saving.value) return;
+  router.push(extendBookingUrl.value);
+}
 
 const booking = ref<BookingDoc | null>(null);
 const loading = ref(true);
@@ -218,6 +227,7 @@ const canChangeStatus = computed(() => {
 });
 
 const isPending = computed(() => (booking.value?.status ?? '') === 'pending');
+const isConfirmed = computed(() => (booking.value?.status ?? '') === 'confirmed');
 
 const bookingCustomer = computed((): CustomerSnap | undefined => {
   const b = booking.value;

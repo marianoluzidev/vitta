@@ -18,18 +18,21 @@
       </VCard>
 
       <VCard v-else-if="filteredClients.length > 0" class="clients-list-card">
-        <a
+        <div
           v-for="client in filteredClients"
           :key="client.id"
-          :href="clientDetailUrl(client.id)"
           class="clients-list-item"
-          @click.prevent="goToDetail(client.id)"
         >
-          <VListItem
-            :title="displayName(client)"
-            :subtitle="client.dni"
-          />
-        </a>
+          <a class="clients-list-item-main" href="#" @click.prevent="goToDetail(client.id)">
+            <VListItem
+              :title="displayName(client)"
+              :subtitle="client.dni"
+            />
+          </a>
+          <f7-link class="clients-list-item-edit" href="#" @click.prevent="goToEdit(client.id)">
+            Editar
+          </f7-link>
+        </div>
       </VCard>
 
       <VCard v-else>
@@ -107,12 +110,22 @@ function displayName(c: ClientItem): string {
   return 'Sin nombre';
 }
 
-function clientDetailUrl(clientId: string): string {
-  return `/t/${tenantId.value}/admin/clientes/${clientId}/`;
+function clientDetailUrl(id: string): string {
+  return `/t/${tenantId.value}/admin/clientes/${id}/`;
 }
 
-function goToDetail(clientId: string): void {
-  router.push(clientDetailUrl(clientId));
+function clientEditUrl(id: string): string {
+  return `/t/${tenantId.value}/admin/clientes/${id}/editar/`;
+}
+
+function goToDetail(id: string): void {
+  router.push(clientDetailUrl(id));
+}
+
+function goToEdit(id: string, e?: Event): void {
+  e?.preventDefault();
+  e?.stopPropagation();
+  router.push(clientEditUrl(id));
 }
 
 function goToNew(): void {
@@ -172,13 +185,28 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 .clients-list-item {
-  display: block;
-  padding: 0 var(--ds-card-padding);
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--f7-list-item-border-color, #e5e5ea);
-  text-decoration: none;
-  color: inherit;
+  padding: 0;
 }
 .clients-list-item:last-child {
   border-bottom: none;
+}
+.clients-list-item-main {
+  flex: 1;
+  padding: 0 var(--ds-card-padding);
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+.clients-list-item-edit {
+  flex-shrink: 0;
+  padding: 0 var(--ds-card-padding);
+  font-size: 0.9rem;
+  color: var(--f7-theme-color, #007aff);
+}
+.clients-list-item-edit:active {
+  opacity: 0.7;
 }
 </style>

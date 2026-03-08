@@ -1,6 +1,10 @@
 <template>
   <f7-page class="admin-page tenant-login">
-    <f7-navbar title="Cliente" back-link="Atrás" :back-link-url="clientsListUrl" />
+    <f7-navbar title="Cliente" back-link="Atrás" :back-link-url="clientsListUrl">
+      <f7-nav-right>
+        <f7-link v-if="client" href="#" @click.prevent="goToEdit">Editar</f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div class="ds-page-content">
       <VCard v-if="loading">

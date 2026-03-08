@@ -1,6 +1,15 @@
 <template>
   <f7-page class="admin-page tenant-login">
-    <f7-navbar title="Editar cliente" back-link="Atrás" :back-link-url="clientViewUrl" />
+    <f7-navbar title="Editar cliente" back-link="Atrás" :back-link-url="clientViewUrl">
+      <f7-nav-right>
+        <f7-link
+          :class="{ 'disabled': saving || !hasChanges }"
+          @click="onNavSave"
+        >
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div class="ds-page-content">
       <VCard v-if="errorMessage" error>
@@ -74,15 +83,6 @@
 
       <div class="ds-spacer" />
     </div>
-
-    <VFixedFooter v-if="clientLoaded">
-      <VPrimaryButton
-        :label="saving ? 'Guardando...' : 'Guardar'"
-        :disabled="saving || !hasChanges"
-        full-width
-        @click="handleSave"
-      />
-    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -94,8 +94,6 @@ import { getDbInstance } from '../../../firebase/firebase';
 import { f7ready } from 'framework7-vue';
 import VCard from '../../../components/ui/VCard.vue';
 import VFormField from '../../../components/ui/VFormField.vue';
-import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
-import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -136,6 +134,10 @@ const hasChanges = computed(() => {
     form.notes !== initialSnapshot.notes
   );
 });
+
+function onNavSave(): void {
+  if (!saving.value && hasChanges.value) handleSave();
+}
 
 function setError(msg: string): void {
   errorMessage.value = msg;
@@ -298,5 +300,9 @@ watch([tenantId, clientId], loadClient);
 }
 .ds-spacer {
   height: var(--ds-space-1);
+}
+.navbar .link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 </style>
