@@ -124,18 +124,28 @@ function loadCSS(href: string, id?: string, forceReload: boolean = false): Promi
   });
 }
 
+const MANIFEST_LINK_ID = 'vitta-web-manifest';
+
+/** Iconos de la app fuera de rutas /t/:… (alineado con public/manifest.json). */
+const DEFAULT_ICON_BASE = '/branding/amatebien/icons';
+
 /**
- * Actualiza el manifest dinámicamente
+ * Actualiza el manifest (mismo elemento que inyecta index.html; sin query en href para no romper id de instalación PWA).
  */
 function updateManifest(manifestPath: string): void {
-  const existingManifest = document.querySelector('link[rel="manifest"]');
-  if (existingManifest) {
-    existingManifest.setAttribute('href', manifestPath);
+  let link = document.getElementById(MANIFEST_LINK_ID) as HTMLLinkElement | null;
+  if (!link) {
+    link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+  }
+  if (link) {
+    link.setAttribute('href', manifestPath);
+    link.id = MANIFEST_LINK_ID;
   } else {
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = manifestPath;
-    document.head.appendChild(link);
+    const el = document.createElement('link');
+    el.id = MANIFEST_LINK_ID;
+    el.rel = 'manifest';
+    el.href = manifestPath;
+    document.head.appendChild(el);
   }
 }
 
@@ -143,25 +153,35 @@ function updateManifest(manifestPath: string): void {
  * Actualiza los iconos dinámicamente
  */
 function updateIcons(tenantId: string, basePath: string = `/branding/${tenantId}/icons`): void {
-  // Actualizar apple-touch-icon
-  const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+  const appleHref = `${basePath}/apple-touch-icon.png`;
+  const favHref = `${basePath}/favicon.png`;
+  let appleIcon = document.getElementById('vitta-apple-touch-icon') as HTMLLinkElement | null;
+  if (!appleIcon) {
+    appleIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement | null;
+  }
   if (appleIcon) {
-    appleIcon.setAttribute('href', `${basePath}/apple-touch-icon.png`);
+    appleIcon.id = 'vitta-apple-touch-icon';
+    appleIcon.setAttribute('href', appleHref);
   } else {
     const link = document.createElement('link');
+    link.id = 'vitta-apple-touch-icon';
     link.rel = 'apple-touch-icon';
-    link.href = `${basePath}/apple-touch-icon.png`;
+    link.href = appleHref;
     document.head.appendChild(link);
   }
 
-  // Actualizar favicon
-  const favicon = document.querySelector('link[rel="icon"]');
+  let favicon = document.getElementById('vitta-favicon') as HTMLLinkElement | null;
+  if (!favicon) {
+    favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+  }
   if (favicon) {
-    favicon.setAttribute('href', `${basePath}/favicon.png`);
+    favicon.id = 'vitta-favicon';
+    favicon.setAttribute('href', favHref);
   } else {
     const link = document.createElement('link');
+    link.id = 'vitta-favicon';
     link.rel = 'icon';
-    link.href = `${basePath}/favicon.png`;
+    link.href = favHref;
     document.head.appendChild(link);
   }
 }
@@ -192,14 +212,15 @@ export function restoreDefaultBranding(): void {
   // Restaurar manifest por defecto
   updateManifest('/manifest.json');
 
-  // Restaurar iconos por defecto
-  const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+  const appleIcon = document.getElementById('vitta-apple-touch-icon') as HTMLLinkElement | null
+    ?? document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement | null;
   if (appleIcon) {
-    appleIcon.setAttribute('href', '/branding/amatebien/icons/apple-touch-icon.png');
+    appleIcon.setAttribute('href', `${DEFAULT_ICON_BASE}/apple-touch-icon.png`);
   }
-  const favicon = document.querySelector('link[rel="icon"]');
+  const favicon = document.getElementById('vitta-favicon') as HTMLLinkElement | null
+    ?? document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (favicon) {
-    favicon.setAttribute('href', '/branding/amatebien/icons/favicon.png');
+    favicon.setAttribute('href', `${DEFAULT_ICON_BASE}/favicon.png`);
   }
 }
 
@@ -265,11 +286,11 @@ export async function loadAndApplyTheme(tenantId: string): Promise<Theme> {
     }
   }
 
-  // Cargar manifest del tenant (query evita manifest/iconos viejos en caché tras deploy)
+  // Manifest del tenant: sin ? en href (Chrome usa href como identidad); SW no cachea /branding/ (workbox).
   try {
-    const manifestResponse = await fetch(`/branding/${tenantId}/manifest.json`);
+    const manifestResponse = await fetch(`/branding/${tenantId}/manifest.json`, { cache: 'no-store' });
     if (manifestResponse.ok) {
-      updateManifest(`/branding/${tenantId}/manifest.json?_t=${Date.now()}`);
+      updateManifest(`/branding/${tenantId}/manifest.json`);
     } else {
       updateManifest('/manifest.json');
     }
@@ -278,20 +299,23 @@ export async function loadAndApplyTheme(tenantId: string): Promise<Theme> {
     updateManifest('/manifest.json');
   }
 
-  // Actualizar iconos del tenant
+  // Iconos: sin caché HTTP para no mezclar favicons entre tenants (branding ya es NetworkOnly en SW).
   try {
-    const iconResponse = await fetch(`/branding/${tenantId}/icons/favicon.png`);
+    const iconResponse = await fetch(`/branding/${tenantId}/icons/favicon.png`, {
+      cache: 'no-store',
+    });
     if (iconResponse.ok) {
       updateIcons(tenantId);
     } else {
-      // Restaurar iconos por defecto si no existen
-      const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      const appleIcon = document.getElementById('vitta-apple-touch-icon') as HTMLLinkElement | null
+        ?? document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement | null;
       if (appleIcon) {
-        appleIcon.setAttribute('href', 'icons/apple-touch-icon.png');
+        appleIcon.setAttribute('href', `${DEFAULT_ICON_BASE}/apple-touch-icon.png`);
       }
-      const favicon = document.querySelector('link[rel="icon"]');
+      const favicon = document.getElementById('vitta-favicon') as HTMLLinkElement | null
+        ?? document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
       if (favicon) {
-        favicon.setAttribute('href', 'icons/favicon.png');
+        favicon.setAttribute('href', `${DEFAULT_ICON_BASE}/favicon.png`);
       }
     }
   } catch (error) {

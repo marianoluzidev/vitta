@@ -21,9 +21,29 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="icon" href="icons/favicon.png">
-  <link rel="manifest" href="/manifest.json">
+  <!-- Iconos + manifest por tenant (patrón GymWox): mismas URLs antes de la SPA para PWA / “Añadir a inicio” -->
+  <link rel="apple-touch-icon" href="/branding/amatebien/icons/apple-touch-icon.png" id="vitta-apple-touch-icon">
+  <link rel="icon" href="/branding/amatebien/icons/favicon.png" id="vitta-favicon">
+  <script>
+    (function () {
+      var path = location.pathname || '/';
+      var m = path.match(/\/t\/([^/]+)(?:\/|$)/);
+      var tid = m && m[1] ? decodeURIComponent(m[1]) : null;
+      var manifestHref = tid ? '/branding/' + encodeURIComponent(tid) + '/manifest.json' : '/manifest.json';
+      var iconBase = tid ? '/branding/' + encodeURIComponent(tid) + '/icons' : '/branding/amatebien/icons';
+      var prev = document.getElementById('vitta-web-manifest');
+      if (prev) prev.remove();
+      var mlink = document.createElement('link');
+      mlink.id = 'vitta-web-manifest';
+      mlink.rel = 'manifest';
+      mlink.href = manifestHref;
+      document.head.appendChild(mlink);
+      var apple = document.getElementById('vitta-apple-touch-icon');
+      if (apple) apple.setAttribute('href', iconBase + '/apple-touch-icon.png');
+      var fav = document.getElementById('vitta-favicon');
+      if (fav) fav.setAttribute('href', iconBase + '/favicon.png');
+    })();
+  </script>
   
   <!-- built styles file will be auto injected -->
 </head>

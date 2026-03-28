@@ -67,12 +67,17 @@ body #app .admin-shell .toolbar.tabbar {
   border-color: var(--vitta-divider, #e0d3c9) !important;
 }
 
-/* Pestaña activa: pill definida por tenant (--vitta-tabbar-active-bg) */
-body #app .admin-shell .toolbar.tabbar .tab-link-active,
-body #app .admin-shell .toolbar.tabbar .tab-link-active * {
+/* Pestaña activa: fondo solo en el enlace (no en *: evita rectángulos rotos por hijos) */
+body #app .admin-shell .toolbar.tabbar .tab-link-active {
   background-color: var(--vitta-tabbar-active-bg, rgba(217, 196, 180, 0.6)) !important;
+  border-radius: 14px;
   color: var(--vitta-text, #7C6A5A) !important;
   -webkit-text-fill-color: var(--vitta-text, #7C6A5A) !important;
+}
+body #app .admin-shell .toolbar.tabbar .tab-link-active * {
+  color: var(--vitta-text, #7C6A5A) !important;
+  -webkit-text-fill-color: var(--vitta-text, #7C6A5A) !important;
+  fill: var(--vitta-text, #7C6A5A) !important;
 }
 
 /* Botones fill: fondo texto principal del tenant, texto blanco */
