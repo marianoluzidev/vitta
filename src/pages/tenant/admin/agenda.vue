@@ -1,71 +1,74 @@
 <template>
-  <f7-page class="admin-page">
+  <f7-page class="admin-page agenda-page">
     <f7-navbar title="Agenda">
       <f7-nav-right>
         <f7-link @click="goToNewBooking">+ Turno</f7-link>
       </f7-nav-right>
     </f7-navbar>
 
-    <f7-block strong inset class="agenda-calendar-block">
-      <div class="agenda-calendar-header">
-        <f7-link class="agenda-calendar-nav" @click="prevMonth">&lsaquo;</f7-link>
-        <span class="agenda-calendar-title">{{ calendarMonthTitle }}</span>
-        <f7-link class="agenda-calendar-nav" @click="nextMonth">&rsaquo;</f7-link>
-      </div>
-      <div class="agenda-calendar-weekdays">
-        <span v-for="w in weekdays" :key="w" class="agenda-calendar-wday">{{ w }}</span>
-      </div>
-      <div class="agenda-calendar-grid">
-        <template v-for="(cell, i) in calendarDays" :key="i">
-          <span
-            v-if="cell === null"
-            class="agenda-calendar-day agenda-calendar-day--empty"
-          />
-          <button
-            v-else
-            type="button"
-            :class="[
-              'agenda-calendar-day',
-              'agenda-calendar-day--clickable',
-              { 'agenda-calendar-day--selected': cell.date === selectedDate },
-              { 'agenda-calendar-day--has-bookings': datesWithBookings.has(cell.date) },
-              { 'agenda-calendar-day--today': cell.date === todayStr }
-            ]"
-            @click="selectDate(cell.date)"
-          >
-            {{ cell.day }}
-          </button>
-        </template>
-      </div>
-    </f7-block>
+    <div class="ds-page-content">
+      <VCard class="agenda-share-book-card">
+        <p class="agenda-share-book-label">Para que el cliente reserve su turno</p>
+        <f7-button fill small class="agenda-share-book-btn" @click="sendBookLinkWhatsApp">
+          Enviar link de reserva por WhatsApp
+        </f7-button>
+      </VCard>
 
-    <f7-block v-if="loading" class="block-strong">
-      <p>Cargando...</p>
-    </f7-block>
-
-    <template v-else-if="bookings.length > 0">
-      <f7-block strong inset>
-        <f7-list-item>
-          <template #after>
-            <f7-toggle :checked="showCancelled" @change="onToggleShowCancelled" />
+      <VCard>
+        <div class="agenda-calendar-header">
+          <f7-link class="agenda-calendar-nav" @click="prevMonth">&lsaquo;</f7-link>
+          <span class="agenda-calendar-title">{{ calendarMonthTitle }}</span>
+          <f7-link class="agenda-calendar-nav" @click="nextMonth">&rsaquo;</f7-link>
+        </div>
+        <div class="agenda-calendar-weekdays">
+          <span v-for="w in weekdays" :key="w" class="agenda-calendar-wday">{{ w }}</span>
+        </div>
+        <div class="agenda-calendar-grid">
+          <template v-for="(cell, i) in calendarDays" :key="i">
+            <span
+              v-if="cell === null"
+              class="agenda-calendar-day agenda-calendar-day--empty"
+            />
+            <button
+              v-else
+              type="button"
+              :class="[
+                'agenda-calendar-day',
+                'agenda-calendar-day--clickable',
+                { 'agenda-calendar-day--selected': cell.date === selectedDate },
+                { 'agenda-calendar-day--has-bookings': datesWithBookings.has(cell.date) },
+                { 'agenda-calendar-day--today': cell.date === todayStr }
+              ]"
+              @click="selectDate(cell.date)"
+            >
+              {{ cell.day }}
+            </button>
           </template>
-          <template #title>Mostrar cancelados</template>
-        </f7-list-item>
-      </f7-block>
-      <f7-list v-if="displayedBookings.length > 0" strong inset>
-      <f7-list-item
-        v-for="b in displayedBookings"
-        :key="b.id"
-        class="agenda-booking-item"
-        link
-        :href="bookingDetailUrl(b.id)"
-        @click.prevent="goToBookingDetail(b.id)"
-      >
-        <template #default>
-          <div class="agenda-booking">
+        </div>
+      </VCard>
+
+      <VCard v-if="loading">
+        <p class="ds-muted">Cargando...</p>
+      </VCard>
+
+      <template v-else-if="bookings.length > 0">
+        <VCard>
+          <div class="agenda-toggle-row">
+            <span class="ds-label">Mostrar cancelados</span>
+            <f7-toggle :checked="showCancelled" @change="onToggleShowCancelled" />
+          </div>
+        </VCard>
+        <VCard v-if="displayedBookings.length > 0" class="agenda-list-card">
+          <a
+            v-for="b in displayedBookings"
+            :key="b.id"
+            :href="bookingDetailUrl(b.id)"
+            class="agenda-booking-item"
+            @click.prevent="goToBookingDetail(b.id)"
+          >
             <div class="agenda-booking-header">
               <span class="agenda-booking-time">{{ b.startTime }} – {{ b.endTime }}</span>
-              <span :class="statusBadgeClass(b.status)" class="badge">{{ statusLabel(b.status) }}</span>
+              <VBadge :variant="statusVariant(b.status)">{{ statusLabel(b.status) }}</VBadge>
             </div>
             <div class="agenda-booking-row">
               <span class="agenda-booking-label">Staff:</span>
@@ -87,18 +90,19 @@
               <span class="agenda-booking-label">Duración:</span>
               <span>{{ b.totalDurationMinutes }} min</span>
             </div>
-          </div>
-        </template>
-      </f7-list-item>
-    </f7-list>
-      <f7-block v-else class="block-strong">
-        <p>Solo hay turnos cancelados en esta fecha.</p>
-        <p><f7-link @click="showCancelled = true">Mostrar cancelados</f7-link></p>
-      </f7-block>
-    </template>
-    <f7-block v-else class="block-strong">
-      <p>No hay turnos para esta fecha.</p>
-    </f7-block>
+          </a>
+        </VCard>
+        <VCard v-else>
+          <p class="ds-muted">Solo hay turnos cancelados en esta fecha.</p>
+          <f7-link class="ds-link" @click="showCancelled = true">Mostrar cancelados</f7-link>
+        </VCard>
+      </template>
+      <VCard v-else-if="!loading">
+        <p class="ds-muted">No hay turnos para esta fecha.</p>
+      </VCard>
+
+      <div class="ds-spacer" />
+    </div>
   </f7-page>
 </template>
 
@@ -107,6 +111,8 @@ import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { getDbInstance } from '../../../firebase/firebase';
+import VCard from '../../../components/ui/VCard.vue';
+import VBadge from '../../../components/ui/VBadge.vue';
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const weekdays = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
@@ -172,6 +178,11 @@ function statusBadgeClass(s: string): string {
   if (s === 'cancelled' || s === 'no_show') return 'color-red';
   return 'color-orange';
 }
+function statusVariant(s: string): 'success' | 'danger' | 'warning' | 'default' {
+  if (s === 'confirmed' || s === 'completed') return 'success';
+  if (s === 'cancelled' || s === 'no_show') return 'danger';
+  return 'warning';
+}
 
 const calendarMonthTitle = computed(() => `${MONTH_NAMES[calendarMonth.value]} ${calendarYear.value}`);
 
@@ -236,6 +247,16 @@ function goToNewBooking(): void {
   router.push(`/t/${tenantId.value}/admin/agenda/new/`);
 }
 
+function sendBookLinkWhatsApp(): void {
+  const tid = tenantId.value;
+  if (!tid) return;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const bookUrl = `${origin}/t/${tid}/book/`;
+  const text = `Reservá tu turno acá: ${bookUrl}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  if (typeof window !== 'undefined') window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+}
+
 function bookingDetailUrl(bookingId: string): string {
   return `/t/${tenantId.value}/admin/agenda/booking/${bookingId}/`;
 }
@@ -270,7 +291,7 @@ function loadBookings(): void {
           totalDurationMinutes: d.totalDurationMinutes ?? 0,
           totalPrice: d.totalPrice,
           status: d.status ?? '',
-          customer: d.customer,
+          customer: d.customer ?? d.clientSnapshot,
           servicesSnapshot: d.servicesSnapshot ?? [],
         };
       });
@@ -328,17 +349,68 @@ watch(
 </script>
 
 <style scoped>
-.agenda-calendar-block {
-  padding: 1rem;
+.ds-page-content {
+  padding: var(--ds-space-2);
+}
+.agenda-share-book-card {
+  margin-bottom: var(--ds-space-2);
+}
+.agenda-share-book-label {
+  margin: 0 0 var(--ds-space-1) 0;
+  font-size: var(--ds-font-title);
+  font-weight: var(--ds-font-weight-body);
+}
+.agenda-share-book-btn {
+  width: 100%;
+}
+.ds-muted {
+  margin: 0 0 var(--ds-space-1);
+  font-size: 0.9375rem;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-muted:last-child {
+  margin-bottom: 0;
+}
+.ds-label {
+  font-size: var(--ds-font-title);
+  font-weight: var(--ds-font-weight-body);
+  color: var(--f7-text-color, #000);
+}
+.ds-link {
+  font-size: 0.9375rem;
+  margin-top: var(--ds-space-1);
+  display: inline-block;
+}
+.ds-spacer {
+  height: var(--ds-space-1);
+}
+.agenda-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+}
+.agenda-list-card {
+  padding: 0;
+}
+.agenda-list-card .agenda-booking-item {
+  display: block;
+  padding: var(--ds-space-2) var(--ds-card-padding);
+  border-bottom: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  text-decoration: none;
+  color: inherit;
+}
+.agenda-list-card .agenda-booking-item:last-child {
+  border-bottom: none;
 }
 .agenda-calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--ds-space-2);
 }
 .agenda-calendar-title {
-  font-weight: 600;
+  font-weight: var(--ds-font-weight-title);
   font-size: 1.1rem;
 }
 .agenda-calendar-nav {

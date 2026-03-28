@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBookingsByDni = exports.createPublicBooking = exports.findClientByDni = exports.getAvailableSlots = void 0;
+exports.rescheduleBookingPublic = exports.cancelBookingPublic = exports.validateManageToken = exports.getBookingsByDni = exports.createPublicBooking = exports.findClientByDni = exports.getAvailableSlots = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -275,6 +275,9 @@ exports.createPublicBooking = functions.https.onCall(async (request) => {
     const newBookingRef = bookingsRef.doc();
     const startAt = new Date(`${payload.date}T${payload.startTime}:00`);
     const endAt = new Date(`${payload.date}T${payload.endTime}:00`);
+    const publicManageToken = Array.from({ length: 48 }, () => Math.random().toString(36)[2]).join('');
+    const now = admin.firestore.Timestamp.now();
+    const statusHistory = [{ at: now, from: '', to: 'pending', by: { type: 'client' }, note: 'created' }];
     const bookingData = {
         tenantId,
         clientId,
@@ -296,8 +299,10 @@ exports.createPublicBooking = functions.https.onCall(async (request) => {
         endTime: payload.endTime,
         startAt: admin.firestore.Timestamp.fromDate(startAt),
         endAt: admin.firestore.Timestamp.fromDate(endAt),
-        status: 'confirmed',
+        status: 'pending',
         source: 'public',
+        publicManageToken,
+        statusHistory,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -334,7 +339,7 @@ exports.createPublicBooking = functions.https.onCall(async (request) => {
     const bookingId = newBookingRef.id;
     if (payload.client.email && payload.client.email.trim()) {
         try {
-            await sendBookingConfirmationEmail(tenantId, bookingId, (_d = (_c = tenantSnap.data()) === null || _c === void 0 ? void 0 : _c.name) !== null && _d !== void 0 ? _d : 'Local');
+            await sendBookingConfirmationEmail(tenantId, bookingId, (_d = (_c = tenantSnap.data()) === null || _c === void 0 ? void 0 : _c.name) !== null && _d !== void 0 ? _d : 'Local', publicManageToken);
         }
         catch (e) {
             functions.logger.warn('Email send failed', e);
@@ -342,7 +347,7 @@ exports.createPublicBooking = functions.https.onCall(async (request) => {
     }
     return { success: true, bookingId, message: 'Reserva confirmada' };
 });
-async function sendBookingConfirmationEmail(tenantId, bookingId, tenantName) {
+async function sendBookingConfirmationEmail(tenantId, bookingId, tenantName, manageToken) {
     var _a;
     const bookingSnap = await db.collection('tenants').doc(tenantId).collection('bookings').doc(bookingId).get();
     if (!bookingSnap.exists)
@@ -351,8 +356,28 @@ async function sendBookingConfirmationEmail(tenantId, bookingId, tenantName) {
     const email = (_a = b.clientSnapshot) === null || _a === void 0 ? void 0 : _a.email;
     if (!email)
         return;
-    // Placeholder: en producción conectar SendGrid/Mailgun/nodemailer
-    functions.logger.info('Would send confirmation email', { to: email, tenantName, date: b.date, startTime: b.startTime });
+    const manageUrl = manageToken ? `https://YOUR_APP_URL/t/${tenantId}/manage/${bookingId}/?token=${manageToken}` : '';
+    // Placeholder: en producción conectar SendGrid/Mailgun/nodemailer e incluir manageUrl en el cuerpo
+    functions.logger.info('Would send confirmation email', { to: email, tenantName, date: b.date, startTime: b.startTime, manageUrl });
+}
+async function getTenantBookingSettings(tenantId) {
+    var _a, _b, _c, _d, _e, _f;
+    const snap = await db.collection('tenants').doc(tenantId).collection('settings').doc('booking').get();
+    const d = snap.data() || {};
+    return {
+        clientCancelWindowHours: (_a = d.clientCancelWindowHours) !== null && _a !== void 0 ? _a : 12,
+        staffCancelWindowHours: (_b = d.staffCancelWindowHours) !== null && _b !== void 0 ? _b : 2,
+        clientRescheduleWindowHours: (_d = (_c = d.clientRescheduleWindowHours) !== null && _c !== void 0 ? _c : d.clientCancelWindowHours) !== null && _d !== void 0 ? _d : 12,
+        staffRescheduleWindowHours: (_f = (_e = d.staffRescheduleWindowHours) !== null && _e !== void 0 ? _e : d.staffCancelWindowHours) !== null && _f !== void 0 ? _f : 2,
+        allowClientCancel: d.allowClientCancel !== false,
+        allowClientReschedule: d.allowClientReschedule !== false,
+    };
+}
+function canCancelByWindow(startAt, windowHours) {
+    const start = startAt.toDate();
+    const deadline = new Date(start);
+    deadline.setHours(deadline.getHours() - windowHours);
+    return new Date() <= deadline;
 }
 /**
  * Devuelve próximos turnos por DNI (solo datos necesarios para listado).
@@ -413,5 +438,185 @@ exports.getBookingsByDni = functions.https.onCall(async (request) => {
         functions.logger.error('getBookingsByDni error', err);
         throw new functions.https.HttpsError('internal', (_a = err === null || err === void 0 ? void 0 : err.message) !== null && _a !== void 0 ? _a : 'Error al buscar turnos');
     }
+});
+/**
+ * Valida token de gestión pública y devuelve el turno (sanitized) para la página /manage.
+ */
+exports.validateManageToken = functions.https.onCall(async (request) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const data = (request.data || {});
+    const { tenantId, bookingId, token } = data;
+    if (!tenantId || !bookingId || !token || String(token).trim().length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId, bookingId and token required');
+    }
+    const bookingSnap = await db.collection('tenants').doc(tenantId).collection('bookings').doc(bookingId).get();
+    if (!bookingSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Turno no encontrado');
+    }
+    const b = bookingSnap.data();
+    if (((_a = b.publicManageToken) !== null && _a !== void 0 ? _a : '') !== String(token).trim()) {
+        throw new functions.https.HttpsError('permission-denied', 'Token inválido');
+    }
+    if (((_b = b.status) !== null && _b !== void 0 ? _b : '') === 'cancelled') {
+        throw new functions.https.HttpsError('failed-precondition', 'Este turno ya está cancelado');
+    }
+    const tenantSnap = await db.collection('tenants').doc(tenantId).get();
+    const tenantName = (_d = (_c = tenantSnap.data()) === null || _c === void 0 ? void 0 : _c.name) !== null && _d !== void 0 ? _d : '';
+    const settings = await getTenantBookingSettings(tenantId);
+    const startAt = b.startAt;
+    const canCancel = settings.allowClientCancel && startAt && canCancelByWindow(startAt, settings.clientCancelWindowHours);
+    const canReschedule = settings.allowClientReschedule && startAt && canCancelByWindow(startAt, settings.clientRescheduleWindowHours);
+    return {
+        bookingId,
+        staffId: (_e = b.staffId) !== null && _e !== void 0 ? _e : '',
+        date: b.date,
+        startTime: b.startTime,
+        endTime: b.endTime,
+        status: (_f = b.status) !== null && _f !== void 0 ? _f : 'confirmed',
+        staffName: b.staffName,
+        servicesSnapshot: (_g = b.servicesSnapshot) !== null && _g !== void 0 ? _g : [],
+        totalDurationMinutes: (_h = b.totalDurationMinutes) !== null && _h !== void 0 ? _h : 0,
+        tenantName,
+        canCancel,
+        canReschedule,
+    };
+});
+/**
+ * Cancelación pública por token.
+ */
+exports.cancelBookingPublic = functions.https.onCall(async (request) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const data = (request.data || {});
+    const { tenantId, bookingId, token, reason } = data;
+    if (!tenantId || !bookingId || !token || String(token).trim().length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId, bookingId and token required');
+    }
+    const bookingRef = db.collection('tenants').doc(tenantId).collection('bookings').doc(bookingId);
+    const bookingSnap = await bookingRef.get();
+    if (!bookingSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Turno no encontrado');
+    }
+    const b = bookingSnap.data();
+    if (((_a = b.publicManageToken) !== null && _a !== void 0 ? _a : '') !== String(token).trim()) {
+        throw new functions.https.HttpsError('permission-denied', 'Token inválido');
+    }
+    if (((_b = b.status) !== null && _b !== void 0 ? _b : '') === 'cancelled') {
+        throw new functions.https.HttpsError('failed-precondition', 'Este turno ya está cancelado');
+    }
+    const settings = await getTenantBookingSettings(tenantId);
+    if (!settings.allowClientCancel) {
+        throw new functions.https.HttpsError('failed-precondition', 'La cancelación por cliente no está permitida');
+    }
+    const startAt = b.startAt;
+    if (!startAt || !canCancelByWindow(startAt, settings.clientCancelWindowHours)) {
+        throw new functions.https.HttpsError('failed-precondition', 'Ya pasó la ventana para cancelar');
+    }
+    const staffId = (_c = b.staffId) !== null && _c !== void 0 ? _c : '';
+    const date = (_d = b.date) !== null && _d !== void 0 ? _d : '';
+    const startTime = (_e = b.startTime) !== null && _e !== void 0 ? _e : '';
+    const endTime = (_f = b.endTime) !== null && _f !== void 0 ? _f : '';
+    const lockId = `${staffId}_${date}`;
+    const slotStateRef = db.collection('tenants').doc(tenantId).collection('slotState').doc(lockId);
+    const prevStatus = (_g = b.status) !== null && _g !== void 0 ? _g : 'confirmed';
+    const historyEntry = { at: admin.firestore.FieldValue.serverTimestamp(), from: prevStatus, to: 'cancelled', by: { type: 'client' }, note: reason !== null && reason !== void 0 ? reason : '' };
+    await db.runTransaction(async (tx) => {
+        var _a, _b;
+        const slotStateSnap = await tx.get(slotStateRef);
+        const slots = slotStateSnap.exists ? ((_b = (_a = slotStateSnap.data()) === null || _a === void 0 ? void 0 : _a.slots) !== null && _b !== void 0 ? _b : []) : [];
+        const newSlots = slots.filter((s) => !(s.startTime === startTime && s.endTime === endTime));
+        if (slotStateSnap.exists) {
+            tx.update(slotStateRef, { slots: newSlots, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        tx.update(bookingRef, {
+            status: 'cancelled',
+            cancelReason: reason !== null && reason !== void 0 ? reason : null,
+            canceledAt: admin.firestore.FieldValue.serverTimestamp(),
+            canceledBy: { type: 'client' },
+            statusHistory: admin.firestore.FieldValue.arrayUnion(historyEntry),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    });
+    return { success: true, message: 'Turno cancelado' };
+});
+/**
+ * Reprogramación pública por token.
+ */
+exports.rescheduleBookingPublic = functions.https.onCall(async (request) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const data = (request.data || {});
+    const { tenantId, bookingId, token, newDate, newStartTime, newEndTime } = data;
+    if (!tenantId || !bookingId || !token || !newDate || !newStartTime || !newEndTime) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId, bookingId, token, newDate, newStartTime, newEndTime required');
+    }
+    const bookingRef = db.collection('tenants').doc(tenantId).collection('bookings').doc(bookingId);
+    const bookingSnap = await bookingRef.get();
+    if (!bookingSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Turno no encontrado');
+    }
+    const b = bookingSnap.data();
+    if (((_a = b.publicManageToken) !== null && _a !== void 0 ? _a : '') !== String(token).trim()) {
+        throw new functions.https.HttpsError('permission-denied', 'Token inválido');
+    }
+    const status = (_b = b.status) !== null && _b !== void 0 ? _b : '';
+    if (status !== 'confirmed' && status !== 'pending') {
+        throw new functions.https.HttpsError('failed-precondition', 'Solo se puede reprogramar un turno confirmado o pendiente');
+    }
+    const settings = await getTenantBookingSettings(tenantId);
+    if (!settings.allowClientReschedule) {
+        throw new functions.https.HttpsError('failed-precondition', 'La reprogramación por cliente no está permitida');
+    }
+    const startAt = b.startAt;
+    if (!startAt || !canCancelByWindow(startAt, settings.clientRescheduleWindowHours)) {
+        throw new functions.https.HttpsError('failed-precondition', 'Ya pasó la ventana para reprogramar');
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (newDate < today) {
+        throw new functions.https.HttpsError('invalid-argument', 'La nueva fecha no puede ser pasada');
+    }
+    const staffId = (_c = b.staffId) !== null && _c !== void 0 ? _c : '';
+    const oldDate = (_d = b.date) !== null && _d !== void 0 ? _d : '';
+    const oldStart = (_e = b.startTime) !== null && _e !== void 0 ? _e : '';
+    const oldEnd = (_f = b.endTime) !== null && _f !== void 0 ? _f : '';
+    const oldLockId = `${staffId}_${oldDate}`;
+    const newLockId = `${staffId}_${newDate}`;
+    const oldSlotStateRef = db.collection('tenants').doc(tenantId).collection('slotState').doc(oldLockId);
+    const newSlotStateRef = db.collection('tenants').doc(tenantId).collection('slotState').doc(newLockId);
+    const newStartAt = new Date(`${newDate}T${newStartTime}:00`);
+    const newEndAt = new Date(`${newDate}T${newEndTime}:00`);
+    const prevStatus = (_g = b.status) !== null && _g !== void 0 ? _g : 'pending';
+    const historyEntry = { at: admin.firestore.FieldValue.serverTimestamp(), from: prevStatus, to: prevStatus, by: { type: 'client' }, note: 'rescheduled' };
+    await db.runTransaction(async (tx) => {
+        var _a, _b, _c, _d;
+        const oldSnap = await tx.get(oldSlotStateRef);
+        const oldSlots = oldSnap.exists ? ((_b = (_a = oldSnap.data()) === null || _a === void 0 ? void 0 : _a.slots) !== null && _b !== void 0 ? _b : []) : [];
+        const withoutOld = oldSlots.filter((s) => !(s.startTime === oldStart && s.endTime === oldEnd));
+        if (oldSnap.exists) {
+            tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        const newSnap = await tx.get(newSlotStateRef);
+        let newSlots = newSnap.exists ? ((_d = (_c = newSnap.data()) === null || _c === void 0 ? void 0 : _c.slots) !== null && _d !== void 0 ? _d : []) : [];
+        const overlap = newSlots.some((s) => s.startTime === newStartTime && s.endTime === newEndTime);
+        if (overlap) {
+            throw new functions.https.HttpsError('failed-precondition', 'SLOT_TAKEN');
+        }
+        newSlots.push({ startTime: newStartTime, endTime: newEndTime });
+        if (newSnap.exists) {
+            tx.update(newSlotStateRef, { slots: newSlots, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        else {
+            tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        tx.update(bookingRef, {
+            date: newDate,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            startAt: admin.firestore.Timestamp.fromDate(newStartAt),
+            endAt: admin.firestore.Timestamp.fromDate(newEndAt),
+            rescheduledAt: admin.firestore.FieldValue.serverTimestamp(),
+            statusHistory: admin.firestore.FieldValue.arrayUnion(historyEntry),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    });
+    return { success: true, message: 'Turno reprogramado' };
 });
 //# sourceMappingURL=index.js.map

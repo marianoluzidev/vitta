@@ -1,3 +1,3 @@
 export const appConfig = {
-  version: 'v0.1',
+  version: 'v0.10',
 };

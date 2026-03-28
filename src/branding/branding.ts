@@ -195,11 +195,11 @@ export function restoreDefaultBranding(): void {
   // Restaurar iconos por defecto
   const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
   if (appleIcon) {
-    appleIcon.setAttribute('href', 'icons/apple-touch-icon.png');
+    appleIcon.setAttribute('href', '/branding/amatebien/icons/apple-touch-icon.png');
   }
   const favicon = document.querySelector('link[rel="icon"]');
   if (favicon) {
-    favicon.setAttribute('href', 'icons/favicon.png');
+    favicon.setAttribute('href', '/branding/amatebien/icons/favicon.png');
   }
 }
 
@@ -265,11 +265,11 @@ export async function loadAndApplyTheme(tenantId: string): Promise<Theme> {
     }
   }
 
-  // Cargar manifest del tenant
+  // Cargar manifest del tenant (query evita manifest/iconos viejos en caché tras deploy)
   try {
     const manifestResponse = await fetch(`/branding/${tenantId}/manifest.json`);
     if (manifestResponse.ok) {
-      updateManifest(`/branding/${tenantId}/manifest.json`);
+      updateManifest(`/branding/${tenantId}/manifest.json?_t=${Date.now()}`);
     } else {
       updateManifest('/manifest.json');
     }

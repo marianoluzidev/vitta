@@ -16,6 +16,9 @@ import 'material-icons/iconfont/material-icons.css';
 
 // App Custom Styles
 import '../css/app.css';
+import '../css/design-system.css';
+// Tema admin (sin azul): debe cargar al final para ganar a F7
+import '../css/admin-shell-theme.css';
 
 // Import App Component
 import App from '../components/app.vue';

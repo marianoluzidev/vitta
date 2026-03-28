@@ -3,7 +3,8 @@
     <f7-navbar title="Pendientes" />
 
     <f7-block strong inset>
-      <p class="block-title">Turnos futuros</p>
+      <p class="block-title">Turnos pendientes</p>
+      <p class="pending-hint">Solo se muestran turnos confirmados o pendientes que aún no pasaron (sin cancelados ni no show).</p>
     </f7-block>
     <f7-block v-if="loading" class="block-strong">
       <p>Cargando...</p>
@@ -37,7 +38,7 @@
       </f7-list-item>
     </f7-list>
     <f7-block v-else class="block-strong">
-      <p>No hay turnos futuros.</p>
+      <p>No hay turnos pendientes.</p>
     </f7-block>
   </f7-page>
 </template>
@@ -70,6 +71,25 @@ const todayStr = computed(() => {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 });
+
+/** Hora actual en "HH:mm" para filtrar turnos de hoy que ya pasaron */
+function currentTimeHHMM(): string {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+/** Solo pendientes o confirmados; excluye cancelados, no_show, completados y turnos ya pasados */
+function isPendingBooking(doc: { data: () => { date?: string; startTime?: string; status?: string } }): boolean {
+  const d = doc.data();
+  const status = d.status ?? '';
+  if (status === 'cancelled' || status === 'no_show' || status === 'completed') return false;
+  if (status !== 'pending' && status !== 'confirmed') return false;
+  const date = d.date ?? '';
+  if (date < todayStr.value) return false;
+  if (date > todayStr.value) return true;
+  const start = d.startTime ?? '00:00';
+  return start >= currentTimeHHMM();
+}
 
 const pendingBookings = ref<PendingBookingItem[]>([]);
 const loading = ref(false);
@@ -110,7 +130,7 @@ function loadPendingBookings() {
   getDocs(q)
     .then((snap) => {
       pendingBookings.value = snap.docs
-        .filter((doc) => (doc.data().status ?? '') !== 'cancelled')
+        .filter((doc) => isPendingBooking(doc))
         .map((doc) => {
           const d = doc.data();
           return {
@@ -120,7 +140,7 @@ function loadPendingBookings() {
             endTime: d.endTime ?? '',
             staffName: d.staffName ?? '',
             status: d.status ?? '',
-            customer: d.customer,
+            customer: d.customer ?? d.clientSnapshot,
           };
         });
     })
@@ -137,6 +157,11 @@ onMounted(() => loadPendingBookings());
 </script>
 
 <style scoped>
+.pending-hint {
+  font-size: 0.875rem;
+  opacity: 0.85;
+  margin: 0.25rem 0 0 0;
+}
 .pending-booking-item {
   align-items: flex-start;
 }

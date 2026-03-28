@@ -21,10 +21,10 @@
 
       <f7-list strong inset>
         <f7-list-item title="Staff" :after="booking.staffName || '—'" />
-        <f7-list-item title="Cliente" :after="customerLabel(booking.customer)" />
-        <f7-list-item v-if="booking.customer?.dni" title="DNI" :after="booking.customer.dni" />
-        <f7-list-item v-if="booking.customer?.phone" title="Teléfono" :after="booking.customer.phone" />
-        <f7-list-item v-if="booking.customer?.email" title="Email" :after="booking.customer.email" />
+        <f7-list-item title="Cliente" :after="customerLabel(bookingCustomer)" />
+        <f7-list-item v-if="bookingCustomer?.dni" title="DNI" :after="bookingCustomer.dni" />
+        <f7-list-item v-if="bookingCustomer?.phone" title="Teléfono" :after="bookingCustomer.phone" />
+        <f7-list-item v-if="bookingCustomer?.email" title="Email" :after="bookingCustomer.email" />
       </f7-list>
 
       <f7-block v-if="booking.servicesSnapshot?.length" strong inset>
@@ -54,7 +54,8 @@
       <!-- Actions: only when not already completed/cancelled/no_show -->
       <f7-block v-if="canChangeStatus" strong inset>
         <p class="block-title">Acciones</p>
-        <f7-button fill small :disabled="saving" @click="setCompleted">Marcar como completado</f7-button>
+        <f7-button v-if="isPending" fill small :disabled="saving" @click="setConfirmed">Confirmar turno</f7-button>
+        <f7-button fill small :disabled="saving" class="margin-top" @click="setCompleted">Marcar como completado</f7-button>
         <f7-button class="margin-top" fill small :disabled="saving" @click="setNoShow">Marcar no show</f7-button>
         <f7-button v-if="!showCancelForm && canCancelByDeadline" class="margin-top" fill small :disabled="saving" @click="showCancelForm = true">Cancelar turno</f7-button>
         <p v-else-if="canChangeStatus && !canCancelByDeadline" class="booking-detail-window-msg">Ya no se puede cancelar (ventana de {{ bookingSettings.staffCancelWindowHours }} h antes).</p>
@@ -62,13 +63,16 @@
         <f7-button v-if="canRescheduleByDeadline" class="margin-top" fill small :disabled="saving" @click="showRescheduleModal = true">Reprogramar</f7-button>
         <p v-else-if="canChangeStatus && !canRescheduleByDeadline" class="booking-detail-window-msg">Ya no se puede reprogramar (ventana de {{ bookingSettings.staffRescheduleWindowHours }} h antes).</p>
 
+        <f7-button v-if="isConfirmed" class="margin-top" fill small :disabled="saving" @click="goToExtend">Extender turno</f7-button>
+
         <div v-if="showCancelForm" class="booking-detail-cancel-block">
-          <f7-list-input
-            label="Motivo de cancelación"
-            type="textarea"
+          <label class="booking-detail-cancel-label">Motivo de cancelación</label>
+          <textarea
+            v-model="cancelReason"
+            class="booking-detail-cancel-textarea"
             placeholder="Escribí el motivo (mín. 3 caracteres)"
-            v-model:value="cancelReason"
             :disabled="saving"
+            rows="3"
           />
           <div class="booking-detail-cancel-actions">
             <f7-button fill small :disabled="saving || cancelReason.trim().length < 3" @click="confirmCancel">Confirmar cancelación</f7-button>
@@ -106,6 +110,7 @@
           </f7-block>
         </f7-page>
       </f7-popup>
+
     </template>
 
     <f7-block v-else-if="!loading" strong inset>
@@ -150,6 +155,7 @@ interface BookingDoc {
   status: string;
   staffName?: string;
   customer?: CustomerSnap;
+  clientSnapshot?: CustomerSnap;
   servicesSnapshot?: ServiceSnap[];
   totalDurationMinutes?: number;
   totalPrice?: number;
@@ -170,6 +176,12 @@ const router = useRouter();
 const tenantId = computed(() => (route.params.tenantId as string) ?? '');
 const bookingId = computed(() => (route.params.bookingId as string) ?? '');
 const agendaUrl = computed(() => `/t/${tenantId.value}/?tab=agenda`);
+const extendBookingUrl = computed(() => `/t/${tenantId.value}/admin/agenda/booking/${bookingId.value}/extend/`);
+
+function goToExtend(): void {
+  if (saving.value) return;
+  router.push(extendBookingUrl.value);
+}
 
 const booking = ref<BookingDoc | null>(null);
 const loading = ref(true);
@@ -214,11 +226,27 @@ const canChangeStatus = computed(() => {
   return s === 'confirmed' || s === 'pending';
 });
 
+const isPending = computed(() => (booking.value?.status ?? '') === 'pending');
+const isConfirmed = computed(() => (booking.value?.status ?? '') === 'confirmed');
+
+const bookingCustomer = computed((): CustomerSnap | undefined => {
+  const b = booking.value;
+  return b?.customer ?? b?.clientSnapshot;
+});
+
 const bookingStartAt = computed((): Date | null => {
   const b = booking.value;
-  if (!b?.startAt) return null;
-  const t = (b.startAt as { toDate?: () => Date }).toDate;
-  return typeof t === 'function' ? t() : null;
+  const raw = b?.startAt;
+  if (!raw) return null;
+  try {
+    const toDate = (raw as { toDate?: () => Date }).toDate;
+    if (typeof toDate === 'function') return toDate.call(raw);
+    const sec = (raw as { seconds?: number }).seconds;
+    if (typeof sec === 'number') return new Date(sec * 1000);
+  } catch {
+    return null;
+  }
+  return null;
 });
 
 const canCancelByDeadline = computed(() => {
@@ -290,6 +318,26 @@ function showToast(text: string): void {
 
 function setError(msg: string): void {
   errorMessage.value = msg;
+}
+
+async function setConfirmed(): Promise<void> {
+  if (saving.value || !booking.value) return;
+  const prev = booking.value.status || 'pending';
+  saving.value = true;
+  errorMessage.value = '';
+  try {
+    await updateBookingStatus({
+      status: 'confirmed',
+      ...pushStatusHistory(prev, 'confirmed'),
+    });
+    booking.value = { ...booking.value, status: 'confirmed' };
+    showToast('Turno confirmado');
+  } catch (e) {
+    console.error(e);
+    setError('No se pudo actualizar. Intentá de nuevo.');
+  } finally {
+    saving.value = false;
+  }
 }
 
 async function setCompleted(): Promise<void> {
@@ -493,19 +541,27 @@ async function confirmReschedule(): Promise<void> {
     const newEndAt = new Date(`${newDate}T${newEnd}:00`);
 
     await runTransaction(db, async (tx) => {
+      // Todas las lecturas primero (Firestore lo exige)
       const oldSnap = await tx.get(oldSlotStateRef);
+      const newSnap = await tx.get(newSlotStateRef);
+
       const oldSlots: Array<{ startTime: string; endTime: string }> = oldSnap.exists() ? (oldSnap.data().slots ?? []) : [];
       const withoutOld = oldSlots.filter((s) => !(s.startTime === oldStart && s.endTime === oldEnd));
-      if (oldSnap.exists()) {
-        tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: serverTimestamp() });
-      }
-      const newSnap = await tx.get(newSlotStateRef);
+
       const newSlots: Array<{ startTime: string; endTime: string }> = newSnap.exists() ? (newSnap.data().slots ?? []) : [];
       const overlap = newSlots.some((s) => s.startTime === newStart && s.endTime === newEnd);
       if (overlap) throw new Error('SLOT_TAKEN');
       newSlots.push({ startTime: newStart, endTime: newEnd });
-      if (newSnap.exists()) tx.update(newSlotStateRef, { slots: newSlots, updatedAt: serverTimestamp() });
-      else tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: serverTimestamp() });
+
+      // Luego todas las escrituras
+      if (oldSnap.exists()) {
+        tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: serverTimestamp() });
+      }
+      if (newSnap.exists()) {
+        tx.update(newSlotStateRef, { slots: newSlots, updatedAt: serverTimestamp() });
+      } else {
+        tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: serverTimestamp() });
+      }
       const patch: UpdateData<BookingDoc> & Record<string, unknown> = {
         date: newDate,
         startTime: newStart,
@@ -598,6 +654,32 @@ watch(showRescheduleModal, (open) => {
 .booking-detail-cancel-block {
   margin-top: 1rem;
 }
+.booking-detail-cancel-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--vitta-text-2, var(--f7-block-strong-text-color, #6d6d72));
+  margin-bottom: 0.35rem;
+}
+.booking-detail-cancel-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  border: 1px solid var(--vitta-divider, #e5e5ea);
+  border-radius: 8px;
+  background: var(--vitta-surface, #f7f7f8);
+  color: var(--vitta-text, #333);
+  box-sizing: border-box;
+  resize: vertical;
+}
+.booking-detail-cancel-textarea:focus {
+  outline: none;
+  border-color: var(--vitta-text, #7C6A5A);
+}
+.booking-detail-cancel-textarea::placeholder {
+  color: var(--vitta-text-2, #9e9e9e);
+}
 .booking-detail-cancel-actions {
   margin-top: 0.75rem;
 }
@@ -619,5 +701,38 @@ watch(showRescheduleModal, (open) => {
 }
 .slot-buttons .button {
   margin: 0;
+}
+
+/* Modal reprogramar: colores del tenant */
+.booking-reschedule-popup .button-fill,
+.booking-reschedule-popup .slot-buttons .button.button-fill {
+  background-color: var(--vitta-text, #7C6A5A) !important;
+  background: var(--vitta-text, #7C6A5A) !important;
+  border-color: var(--vitta-text, #7C6A5A) !important;
+  color: #fff !important;
+}
+.booking-reschedule-popup .slot-buttons .button {
+  border-color: var(--vitta-divider, #E0D3C9);
+  color: var(--vitta-text, #7C6A5A);
+}
+.booking-reschedule-popup .slot-buttons .button:not(.button-fill):hover {
+  background: var(--vitta-surface, #F0E2D6);
+}
+.booking-reschedule-popup .block,
+.booking-reschedule-popup .block-title,
+.booking-reschedule-popup p {
+  color: var(--vitta-text, #7C6A5A);
+}
+.booking-reschedule-popup .navbar,
+.booking-reschedule-popup .navbar-bg,
+.booking-reschedule-popup .navbar-inner {
+  background-color: var(--vitta-navbar, #D9C4B4);
+}
+.booking-reschedule-popup .navbar .navbar-title,
+.booking-reschedule-popup .navbar .left a {
+  color: #fff;
+}
+.booking-reschedule-popup .page-content {
+  background-color: var(--vitta-bg, #FBF5EF);
 }
 </style>

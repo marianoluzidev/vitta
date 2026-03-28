@@ -1,16 +1,17 @@
 {
   "name": "vitta",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Vitta",
   "repository": "",
   "license": "UNLICENSED",
   "scripts": {
     "start": "npm run dev",
     "dev": "cross-env NODE_ENV=development vite",
-    "build": "cross-env NODE_ENV=production vite build && npx workbox generateSW workbox-config.js",
+    "build": "cross-env NODE_ENV=production vite build && npx workbox generateSW workbox-config.js && node scripts/write-version-json.js",
     "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/",
-    "set:owner": "node tools/set-owner-claim.js --email=\"YOUR_EMAIL_HERE\""
+    "set:owner": "node tools/set-owner-claim.js --email=\"YOUR_EMAIL_HERE\"",
+    "deploy:functions": "npm run build --prefix functions && firebase deploy --only functions"
   },
   "browserslist": [
     "IOS >= 15",

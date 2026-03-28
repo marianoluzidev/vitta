@@ -1,100 +1,128 @@
 <template>
-  <f7-page class="admin-page tenant-login">
+  <f7-page class="booking-new-page admin-page tenant-login">
     <f7-navbar title="Nuevo Turno" back-link="Atrás" :back-link-url="agendaListUrl">
       <f7-nav-right>
-        <f7-link @click="handleSave" :disabled="saving || !canSave">Guardar</f7-link>
+        <f7-link
+          :class="{ 'disabled': saving || !canSave }"
+          @click="onNavSave"
+        >
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </f7-link>
       </f7-nav-right>
     </f7-navbar>
 
-    <f7-block v-if="slotTakenError" strong inset class="booking-error-block">
-      <p class="booking-error">Ese horario ya fue tomado. Elegí otro.</p>
-    </f7-block>
-    <f7-block strong inset>
-      <f7-list form>
-        <!-- A) Staff (sheet desde abajo con búsqueda) -->
-        <f7-list-item title="Staff" group-title />
-        <f7-list-item
-          :title="form.staffId ? (selectedStaffDoc ? fullName(selectedStaffDoc) : 'Cargando...') : 'Elegir staff'"
-          link
-          @click="staffSheetOpen = true"
-        >
-          <template #after>
-            <span class="picker-change">{{ form.staffId ? 'Cambiar' : 'Elegir' }}</span>
-          </template>
-        </f7-list-item>
-        <StaffSheetPicker
-          :opened="staffSheetOpen"
-          :staff-list="activeStaffList"
-          @select="onStaffSheetSelect"
-          @close="staffSheetOpen = false"
-        />
+    <div class="ds-page-content">
+      <VCard v-if="slotTakenError" error>
+        <p class="ds-error-text">Ese horario ya fue tomado. Elegí otro.</p>
+      </VCard>
 
-        <!-- B) Services (multi) -->
-        <f7-list-item v-if="filteredServices.length > 0" title="Servicios" group-title />
-        <f7-list-item
+      <!-- Staff -->
+      <VCard>
+        <VSectionTitle>Staff</VSectionTitle>
+        <VListItem clickable @click="staffSheetOpen = true">
+          <template #default>
+            <span v-if="form.staffId" class="ds-value">{{ selectedStaffDoc ? fullName(selectedStaffDoc) : 'Cargando...' }}</span>
+            <span v-else class="ds-placeholder">Elegir staff</span>
+          </template>
+          <template #after>{{ form.staffId ? 'Cambiar' : 'Elegir' }}</template>
+        </VListItem>
+      </VCard>
+      <StaffSheetPicker
+        :opened="staffSheetOpen"
+        :staff-list="activeStaffList"
+        @select="onStaffSheetSelect"
+        @close="staffSheetOpen = false"
+      />
+
+      <!-- Servicios -->
+      <VCard v-if="filteredServices.length > 0">
+        <VSectionTitle>Servicios</VSectionTitle>
+        <div
           v-for="svc in filteredServices"
           :key="svc.id"
-          :title="svc.name"
-          checkbox
-          :checked="form.serviceIds.includes(svc.id)"
-          @change="toggleService(svc.id)"
+          class="booking-new-service-row"
         >
-          <template #after>
-            {{ svc.durationMinutes }} min · {{ formatPrice(svc.price) }}
-          </template>
-        </f7-list-item>
-        <f7-list-item v-if="selectedServicesTotal.duration > 0" title="Total">
-          <template #after>
-            {{ selectedServicesTotal.duration }} min · {{ formatPrice(selectedServicesTotal.price) }}
-          </template>
-        </f7-list-item>
+          <label class="booking-new-service-label">
+            <input
+              type="checkbox"
+              :checked="form.serviceIds.includes(svc.id)"
+              class="booking-new-checkbox"
+              @change="toggleService(svc.id)"
+            />
+            <span class="booking-new-service-name">{{ svc.name }}</span>
+          </label>
+          <div class="booking-new-service-meta">
+            <span class="booking-new-service-duration">{{ svc.durationMinutes }} min</span>
+            <span class="booking-new-service-price">{{ formatPrice(svc.price) }}</span>
+          </div>
+        </div>
+        <div v-if="selectedServicesTotal.duration > 0" class="booking-new-total">
+          <div class="booking-new-total-label">Total</div>
+          <div class="booking-new-total-duration">{{ selectedServicesTotal.duration }} min</div>
+          <div class="booking-new-total-amount">{{ formatPrice(selectedServicesTotal.price) }}</div>
+        </div>
+      </VCard>
 
-        <!-- C) Date -->
-        <f7-list-item title="Fecha">
-          <template #after>
-            <input type="date" :value="form.date" @input="onDateInput" />
-          </template>
-        </f7-list-item>
+      <!-- Fecha y horario -->
+      <VCard>
+        <VSectionTitle>Fecha y horario</VSectionTitle>
+        <div class="booking-new-row">
+          <span class="booking-new-label">Fecha</span>
+          <input type="date" :value="form.date" class="booking-new-date-input" @input="onDateInput" />
+        </div>
+        <div v-if="availableSlots.length > 0" class="booking-new-slots-wrap">
+          <span class="booking-new-label booking-new-label--secondary">Horario</span>
+          <div class="booking-new-slot-buttons">
+            <button
+              v-for="slot in availableSlots"
+              :key="slot.start"
+              type="button"
+              :class="['booking-new-slot-btn', { 'booking-new-slot-btn--active': form.startTime === slot.start }]"
+              @click="selectSlot(slot.start, slot.end)"
+            >
+              {{ slot.start }} – {{ slot.end }}
+            </button>
+          </div>
+        </div>
+        <p v-else-if="slotQueryReady && form.staffId && form.date && selectedServicesTotal.duration > 0" class="ds-muted">
+          Sin horarios disponibles
+        </p>
+      </VCard>
 
-        <!-- D) Slots -->
-        <f7-list-item v-if="availableSlots.length > 0" title="Horario" group-title />
-        <f7-block v-if="availableSlots.length > 0" class="slot-buttons">
-          <f7-button
-            v-for="slot in availableSlots"
-            :key="slot.start"
-            :fill="form.startTime === slot.start"
-            small
-            @click="selectSlot(slot.start, slot.end)"
-          >
-            {{ slot.start }} – {{ slot.end }}
-          </f7-button>
-        </f7-block>
-        <f7-list-item v-else-if="slotQueryReady && form.staffId && form.date && selectedServicesTotal.duration > 0" title="Horario">
-          <template #after>
-            <span class="text-color-gray">Sin horarios disponibles</span>
+      <!-- Cliente -->
+      <VCard>
+        <VSectionTitle>Cliente</VSectionTitle>
+        <VListItem clickable @click="clientSheetOpen = true">
+          <template #default>
+            <template v-if="form.clientId">
+              <span class="ds-value">{{ clientSummary }}</span>
+              <span v-if="form.customer.dni" class="ds-sublabel">DNI {{ form.customer.dni }}</span>
+            </template>
+            <span v-else class="ds-placeholder">Elegir cliente</span>
           </template>
-        </f7-list-item>
+          <template #after>{{ form.clientId ? 'Cambiar' : 'Elegir' }}</template>
+        </VListItem>
+      </VCard>
+      <ClientSheetPicker
+        :opened="clientSheetOpen"
+        :tenant-id="tenantId"
+        @select="onClientSheetSelect"
+        @close="clientSheetOpen = false"
+      />
 
-        <!-- E) Cliente (sheet desde abajo con búsqueda) -->
-        <f7-list-item title="Cliente" group-title />
-        <f7-list-item
-          :title="form.clientId ? clientSummary : 'Elegir cliente'"
-          link
-          @click="clientSheetOpen = true"
-        >
-          <template #after>
-            <span class="picker-change">{{ form.clientId ? 'Cambiar' : 'Elegir' }}</span>
-          </template>
-        </f7-list-item>
-        <ClientSheetPicker
-          :opened="clientSheetOpen"
-          :tenant-id="tenantId"
-          @select="onClientSheetSelect"
-          @close="clientSheetOpen = false"
+      <!-- Notas -->
+      <VCard>
+        <VSectionTitle>Notas</VSectionTitle>
+        <textarea
+          v-model="form.notes"
+          class="ds-textarea"
+          placeholder="Opcional"
+          rows="3"
         />
-        <f7-list-input label="Notas" type="textarea" v-model:value="form.notes" clear-button placeholder="Opcional" />
-      </f7-list>
-    </f7-block>
+      </VCard>
+
+      <div class="ds-spacer" />
+    </div>
   </f7-page>
 </template>
 
@@ -118,6 +146,9 @@ import { getDbInstance } from '../../../firebase/firebase';
 import { getCurrentUser } from '../../../auth/session';
 import StaffSheetPicker from '../../../components/StaffSheetPicker.vue';
 import ClientSheetPicker from '../../../components/ClientSheetPicker.vue';
+import VCard from '../../../components/ui/VCard.vue';
+import VSectionTitle from '../../../components/ui/VSectionTitle.vue';
+import VListItem from '../../../components/ui/VListItem.vue';
 import { computeAvailableSlots, parseTime, type Schedule } from '../../../services/slotEngine';
 
 const SLOT_STEP = 15;
@@ -383,6 +414,10 @@ onMounted(async () => {
   }
 });
 
+function onNavSave(): void {
+  if (canSave.value && !saving.value) handleSave();
+}
+
 async function handleSave(): Promise<void> {
   const tid = tenantId.value;
   if (!tid || !canSave.value || saving.value) return;
@@ -508,24 +543,195 @@ async function handleSave(): Promise<void> {
 </script>
 
 <style scoped>
-.slot-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.booking-new-page .navbar .link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
-.slot-buttons .button {
-  margin: 0;
+.ds-page-content {
+  padding: var(--ds-space-2) var(--ds-space-2) 100px;
 }
-.booking-error-block {
-  margin-bottom: 0;
-}
-.booking-error {
+.ds-error-text {
   margin: 0;
   color: var(--f7-color-red);
-  font-size: 0.95rem;
+  font-size: var(--ds-font-title);
+  font-weight: 500;
 }
-.picker-change {
-  font-size: 0.9rem;
-  color: var(--f7-theme-color, #007aff);
+.ds-value {
+  font-size: var(--ds-font-body);
+  font-weight: var(--ds-font-weight-body);
+  color: var(--f7-text-color, #000);
+}
+.ds-placeholder {
+  font-size: var(--ds-font-body);
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-sublabel {
+  font-size: var(--ds-font-caption);
+  opacity: 0.75;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-muted {
+  margin: var(--ds-space-1) 0 0;
+  font-size: 0.875rem;
+  opacity: 0.75;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+.ds-textarea {
+  width: 100%;
+  font-size: var(--ds-font-body);
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  background: var(--f7-page-bg-color, #f2f2f7);
+  color: var(--f7-text-color, #000);
+  resize: vertical;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+.ds-textarea::placeholder {
+  color: var(--f7-block-strong-text-color, #8e8e93);
+  opacity: 0.8;
+}
+.ds-spacer {
+  height: var(--ds-space-1);
+}
+.booking-new-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  gap: var(--ds-space-2);
+}
+.booking-new-label {
+  font-size: var(--ds-font-title);
+  font-weight: var(--ds-font-weight-body);
+  color: var(--f7-text-color, #000);
+}
+.booking-new-label--secondary {
+  font-size: var(--ds-font-caption);
+  font-weight: 500;
+  opacity: 0.8;
+  margin-bottom: var(--ds-space-1);
+}
+.booking-new-date-input {
+  font-size: var(--ds-font-body);
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  background: var(--f7-page-bg-color, #f2f2f7);
+  color: var(--f7-text-color, #000);
+}
+
+/* Servicios */
+.booking-new-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-2) 0;
+  border-bottom: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  cursor: pointer;
+}
+
+.booking-new-service-row:last-of-type {
+  border-bottom: none;
+}
+
+.booking-new-service-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.booking-new-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--f7-theme-color, #007aff);
+}
+
+.booking-new-service-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--f7-text-color, #000);
+}
+
+.booking-new-service-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.booking-new-service-duration {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+
+.booking-new-service-price {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--f7-text-color, #000);
+}
+
+.booking-new-total {
+  margin-top: var(--ds-space-2);
+  padding-top: var(--ds-space-2);
+  border-top: 2px solid var(--f7-list-item-border-color, #e5e5ea);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ds-space-1);
+}
+
+.booking-new-total-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--f7-block-title-color, #6d6d72);
+  width: 100%;
+}
+
+.booking-new-total-duration {
+  font-size: 0.8125rem;
+  opacity: 0.8;
+  color: var(--f7-block-strong-text-color, #8e8e93);
+}
+
+.booking-new-total-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--f7-text-color, #000);
+  margin-left: auto;
+}
+
+/* Slots */
+.booking-new-slots-wrap {
+  margin-top: var(--ds-space-2);
+}
+.booking-new-slot-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-1);
+}
+.booking-new-slot-btn {
+  padding: var(--ds-space-1) var(--ds-space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--ds-input-radius);
+  border: 1px solid var(--f7-list-item-border-color, #e5e5ea);
+  background: var(--f7-page-bg-color, #f2f2f7);
+  color: var(--f7-text-color, #000);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.booking-new-slot-btn--active {
+  background: var(--f7-theme-color, #007aff);
+  border-color: var(--f7-theme-color, #007aff);
+  color: #fff;
 }
 </style>
