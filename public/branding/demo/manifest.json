@@ -1,12 +1,14 @@
 {
+  "id": "/t/demo/",
   "name": "Demo Tenant",
   "short_name": "Demo",
   "description": "Demo Tenant - Plataforma de gestión y reservas",
   "lang": "es-ES",
   "start_url": "/t/demo/",
+  "scope": "/t/demo/",
   "display": "standalone",
-  "background_color": "#f2f2f7",
-  "theme_color": "#ff3b30",
+  "background_color": "#f2f3f6",
+  "theme_color": "#6B7280",
   "icons": [
     {
       "src": "/branding/demo/icons/128x128.png",
@@ -40,4 +42,3 @@
     }
   ]
 }
-

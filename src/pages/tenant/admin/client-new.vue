@@ -1,6 +1,15 @@
 <template>
   <f7-page class="admin-page tenant-login">
-    <f7-navbar title="Nuevo cliente" back-link="Atrás" :back-link-url="clientsListUrl" />
+    <f7-navbar title="Nuevo cliente" back-link="Atrás" :back-link-url="clientsListUrl">
+      <f7-nav-right>
+        <f7-link
+          :class="{ 'disabled': saving || !canSave }"
+          @click="onNavSave"
+        >
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div class="ds-page-content">
       <VCard v-if="errorMessage" error>
@@ -66,15 +75,6 @@
 
       <div class="ds-spacer" />
     </div>
-
-    <VFixedFooter>
-      <VPrimaryButton
-        :label="saving ? 'Guardando...' : 'Crear cliente'"
-        :disabled="saving || !canSave"
-        full-width
-        @click="handleSave"
-      />
-    </VFixedFooter>
   </f7-page>
 </template>
 
@@ -86,8 +86,6 @@ import { getDbInstance } from '../../../firebase/firebase';
 import { f7ready } from 'framework7-vue';
 import VCard from '../../../components/ui/VCard.vue';
 import VFormField from '../../../components/ui/VFormField.vue';
-import VPrimaryButton from '../../../components/ui/VPrimaryButton.vue';
-import VFixedFooter from '../../../components/ui/VFixedFooter.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -110,6 +108,10 @@ const canSave = computed(() => {
   const last = form.lastName.trim();
   return first.length > 0 || last.length > 0;
 });
+
+function onNavSave(): void {
+  if (!saving.value && canSave.value) handleSave();
+}
 
 function showToast(text: string, isError = false): void {
   f7ready((f7) => {
@@ -182,5 +184,9 @@ async function handleSave(): Promise<void> {
 }
 .ds-spacer {
   height: var(--ds-space-1);
+}
+.navbar .link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 </style>

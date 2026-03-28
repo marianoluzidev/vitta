@@ -13,6 +13,8 @@
   --vitta-text-2: #9C8570;
   --vitta-divider: #E0D3C9;
   --vitta-accent: #B3C9B6;
+  /* Pestaña activa del tabbar (admin-shell-theme.css) */
+  --vitta-tabbar-active-bg: rgba(217, 196, 180, 0.6);
 }
 
 /* Framework7: reemplazar azul/verde por paleta tenant (origen del azul/verde) */

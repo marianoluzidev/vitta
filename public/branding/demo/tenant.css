@@ -1,91 +1,483 @@
-/* CSS personalizado para Demo Tenant */
+/*
+  Tenant Demo – paleta en grises claros (diferente del tono cálido / taupe de Amate Bien).
+  Azul F7: anulado vía --f7-theme-color/--f7-link-color y overrides.
+  Verde (badges): sustituido por acento gris-azulado suave.
+*/
 
-/* Fondo de la página principal (tenant home y admin) */
-.tenant-home,
-.tenant-home .page,
-.tenant-home .page-content,
-.tenant-home .page-content-inner,
-.admin-shell .page,
-.admin-shell .admin-shell__content,
-.admin-shell .tabs .tab .page,
-.admin-shell .tabs .tab .page .page-content {
-  background-color: #fff8e6 !important;
-  background: #fff8e6 !important;
+/* Paleta fría, clara, bajo contraste */
+:root {
+  --vitta-bg: #F2F3F6;
+  --vitta-surface: #E6E8ED;
+  --vitta-navbar: #ADB4BE;
+  --vitta-text: #3C4048;
+  --vitta-text-2: #6B7280;
+  --vitta-divider: #D1D5DB;
+  --vitta-accent: #A8B4C4;
+  /* Pestaña activa del tabbar (admin-shell-theme.css lee esta variable) */
+  --vitta-tabbar-active-bg: rgba(160, 168, 178, 0.45);
 }
 
-/* Fondo de los bloques también (tenant home y admin) */
+/* Framework7: reemplazar azul/verde por paleta tenant (origen del azul/verde) */
+.tenant-home,
+.admin-shell,
+.tenant-login {
+  --f7-theme-color: var(--vitta-text) !important;
+  --f7-theme-color-rgb: 60, 64, 72;
+  --f7-link-color: var(--vitta-text) !important;
+  --f7-tabbar-link-active-color: var(--vitta-text);
+  --f7-tabbar-link-inactive-color: var(--vitta-text-2);
+  --f7-toolbar-link-color: var(--vitta-text);
+  --f7-color-green: var(--vitta-accent);
+  --f7-color-success: var(--vitta-accent);
+  /* Bloques y toolbar: evitar azul en títulos y texto */
+  --f7-block-title-color: var(--vitta-text) !important;
+  --f7-block-strong-text-color: var(--vitta-text-2) !important;
+  --f7-toolbar-bg-color: var(--vitta-surface);
+  --f7-toolbar-border-color: var(--vitta-divider);
+}
+
+/* Fondos */
+.tenant-home .page,
+.tenant-home .page-content,
+.admin-shell .page,
+.admin-shell .admin-shell__content,
+.admin-shell .tabs .tab .page .page-content,
+.tenant-login .page,
+.tenant-login .page-content {
+  background-color: var(--vitta-bg);
+  color: var(--vitta-text);
+}
+
 .tenant-home .block,
 .tenant-home .block-strong,
 .admin-shell .block,
-.admin-shell .block-strong {
-  background-color: transparent !important;
+.admin-shell .block-strong,
+.tenant-login .block {
+  background-color: transparent;
+  color: var(--vitta-text);
 }
 
-/* Título principal */
-.tenant-home .welcome-title,
-.tenant-home h1.welcome-title {
-  color: #f19894 !important;
-  text-shadow: 0 2px 4px rgba(92, 223, 92, 0.2) !important;
-}
-
-/* Subtítulo */
-.tenant-home .welcome-subtitle,
-.tenant-home p.welcome-subtitle {
-  color: #fff8e6 !important;
-}
-
-/* Navbar - usando selectores más específicos de Framework7 */
+/* Navbar */
 .tenant-home .navbar,
 .tenant-home .navbar-bg,
-.tenant-home .navbar-inner {
-  background-color: #fff8e6 !important;
-  background: #fff8e6 !important;
+.tenant-home .navbar-inner,
+.admin-shell .navbar,
+.admin-shell .navbar-bg,
+.admin-shell .navbar-inner,
+.tenant-login .navbar,
+.tenant-login .navbar-bg,
+.tenant-login .navbar-inner {
+  background-color: var(--vitta-navbar);
 }
 
-.tenant-home .navbar .navbar-title {
-  color: white !important;
+.tenant-home .navbar .navbar-title,
+.admin-shell .navbar .navbar-title,
+.tenant-login .navbar .navbar-title {
+  color: #fff;
 }
 
-/* Logo del tenant y admin */
+.admin-shell .navbar .right a,
+.admin-shell .navbar .right .link,
+.tenant-login .navbar .right a,
+.tenant-login .navbar .right .link {
+  color: #fff;
+}
+
+/* Texto general */
+.tenant-home,
+.admin-shell,
+.tenant-login {
+  color: var(--vitta-text);
+}
+
+/* Links y horarios: forzar var(--vitta-text) (F7 y <a> usan azul por defecto) */
+.admin-shell a,
+.admin-shell a:visited,
+.admin-shell .link,
+.admin-shell .item-link .item-title,
+.admin-shell .item-link .item-after,
+.admin-shell .item-after,
+.admin-shell .tabbar a,
+.admin-shell .tabbar .tab-link,
+.admin-shell .tabbar .icon,
+.admin-shell .tabbar-label,
+.admin-shell .agenda-booking-item,
+.admin-shell .agenda-booking-time,
+.admin-shell .agenda-calendar-nav,
+.admin-shell .text-color-blue,
+.admin-shell .color-blue,
+.tenant-home a,
+.tenant-home .link,
+.tenant-login a,
+.tenant-login .link,
+.public-book-page a,
+.manage-booking-public-page a,
+.public-my-bookings-page a {
+  color: var(--vitta-text) !important;
+}
+
+/* Tabbar: fondo de la barra (evitar azul/lila) y texto/iconos en gris */
+.admin-shell .toolbar.tabbar {
+  background-color: var(--vitta-surface) !important;
+  background: var(--vitta-surface) !important;
+  border-color: var(--vitta-divider);
+}
+
+.admin-shell .toolbar.tabbar .tab-link,
+.admin-shell .toolbar.tabbar .tab-link .icon,
+.admin-shell .toolbar.tabbar .tab-link .tabbar-label,
+.admin-shell .toolbar.tabbar .icon,
+.admin-shell .toolbar.tabbar .tabbar-label,
+.admin-shell .toolbar.tabbar .f7-icons,
+.admin-shell .toolbar.tabbar .material-icons,
+.admin-shell .toolbar.tabbar .tab-link * {
+  color: var(--vitta-text) !important;
+  -webkit-text-fill-color: var(--vitta-text) !important;
+}
+
+/* Tabbar activo: pill tonal suave (no azul) */
+.admin-shell .tabbar a.tab-link-active,
+.admin-shell .toolbar.tabbar .tab-link-active {
+  background: rgba(160, 168, 178, 0.45) !important;
+  border-radius: 14px;
+  color: var(--vitta-text) !important;
+  -webkit-text-fill-color: var(--vitta-text) !important;
+}
+
+.admin-shell .toolbar.tabbar .tab-link-active .icon,
+.admin-shell .toolbar.tabbar .tab-link-active .tabbar-label,
+.admin-shell .toolbar.tabbar .tab-link-active .f7-icons,
+.admin-shell .toolbar.tabbar .tab-link-active .material-icons,
+.admin-shell .toolbar.tabbar .tab-link-active * {
+  color: var(--vitta-text) !important;
+  -webkit-text-fill-color: var(--vitta-text) !important;
+}
+
+/* Iconos SVG en tabbar (por si usan fill) */
+.admin-shell .toolbar.tabbar .icon svg,
+.admin-shell .toolbar.tabbar .f7-icons svg,
+.admin-shell .toolbar.tabbar .material-icons svg,
+.admin-shell .toolbar.tabbar svg {
+  fill: var(--vitta-text) !important;
+  color: var(--vitta-text) !important;
+}
+
+/* Bloques: títulos y texto en gris */
+.admin-shell .block p,
+.admin-shell .block-strong p,
+.admin-shell .block-title,
+.admin-shell .block .block-title,
+.admin-shell .block-strong .block-title,
+.admin-shell .block-strong p {
+  color: var(--vitta-text) !important;
+  -webkit-text-fill-color: var(--vitta-text) !important;
+}
+
+/* Botones fill: fondo gris oscuro, texto claro */
+.admin-shell .button-fill,
+.admin-shell .button.button-fill,
+.admin-shell .block .button-fill,
+.admin-shell .block .button.button-fill {
+  background-color: var(--vitta-text) !important;
+  background: var(--vitta-text) !important;
+  border-color: var(--vitta-text) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.admin-shell .button-fill:disabled,
+.admin-shell .button.button-fill:disabled,
+.admin-shell .block .button-fill:disabled,
+.admin-shell .block .button.button-fill:disabled {
+  opacity: 0.6;
+  background-color: var(--vitta-text-2) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Badges / estados: tonal suave (no verde) */
+.admin-shell .badge,
+.admin-shell .v-badge,
+.admin-shell .v-badge--success,
+.admin-shell .badge.color-green,
+.admin-shell .badge.bg-color-green,
+.admin-shell .badge.color-success,
+.admin-shell .badge.bg-color-success,
+.admin-shell .text-color-green,
+.admin-shell .text-color-success,
+.admin-shell .chip,
+.admin-shell .chip.color-green,
+.admin-shell .chip.bg-color-green {
+  background: rgba(230, 232, 237, 0.95) !important;
+  border: 1px solid rgba(209, 213, 219, 0.92) !important;
+  color: var(--vitta-text) !important;
+}
+
+/* Cards / superficies (tonos suaves) */
+.admin-shell .v-card,
+.admin-shell .card,
+.admin-shell .block-strong.inset {
+  background-color: rgba(230, 232, 237, 0.88);
+  border: 1px solid rgba(209, 213, 219, 0.85);
+  border-radius: 14px;
+}
+
+/* Títulos home */
+.tenant-home .welcome-title {
+  color: var(--vitta-text);
+  text-shadow: none;
+}
+
+.tenant-home .welcome-subtitle {
+  color: var(--vitta-text-2);
+}
+
+/* Divisores */
+.hairline,
+.hairline-top,
+.hairline-bottom,
+.admin-shell .list .item-inner:after {
+  background-color: var(--vitta-divider);
+}
+
+/* Toggle */
+.admin-shell .toggle .toggle-icon {
+  background: rgba(209, 213, 219, 0.88);
+}
+
+.admin-shell .toggle input[type="checkbox"]:checked + .toggle-icon {
+  background-color: var(--vitta-accent);
+}
+
+.admin-shell .toggle input[type="checkbox"]:checked + .toggle-icon:after {
+  background: #fff;
+}
+
+/* Logo */
 .tenant-home .tenant-logo-container,
 .admin-shell .tenant-logo-container {
   text-align: center;
-  padding: 1.5rem 1rem;
-  background-color: var(--vitta-background, #ffffff);
+  padding: 1rem;
+  background-color: transparent;
 }
 
 .tenant-home .tenant-logo,
 .admin-shell .tenant-logo {
-  max-width: 200px;
-  max-height: 120px;
+  max-width: 220px;
+  max-height: 100px;
   width: auto;
   height: auto;
   object-fit: contain;
 }
 
-/* Card de acciones: fondo sólido para que destaque */
-.tenant-home .tenant-actions-card {
-  background-color: #ffffff !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+/* Texto secundario dentro de cards */
+.admin-shell .v-card .muted,
+.admin-shell .card .muted {
+  color: var(--vitta-text-2);
 }
 
-/* Página de login: mismos estilos que el tenant */
-.tenant-login,
-.tenant-login .page,
-.tenant-login .page-content {
-  background-color: #fff8e6 !important;
-  background: #fff8e6 !important;
-}
-.tenant-login .navbar,
-.tenant-login .navbar-bg,
-.tenant-login .navbar-inner {
-  background-color: #fff8e6 !important;
-  background: #fff8e6 !important;
-}
-.tenant-login .navbar .navbar-title {
-  color: white !important;
-}
-.tenant-login .block {
-  background-color: transparent !important;
+/* ========== Public book y páginas públicas del tenant ========== */
+.public-book-page .page-content,
+.public-book-page .ds-page-content,
+.manage-booking-public-page .page-content,
+.public-my-bookings-page .page-content {
+  background-color: var(--vitta-bg);
+  color: var(--vitta-text);
 }
 
+.public-book-page .v-card,
+.public-book-page .card,
+.manage-booking-public-page .v-card,
+.public-my-bookings-page .v-card {
+  background-color: rgba(230, 232, 237, 0.88);
+  border: 1px solid rgba(209, 213, 219, 0.85);
+  border-radius: 14px;
+}
+
+.public-book-page .v-primary-btn,
+.public-book-page .button-fill,
+.manage-booking-public-page .v-primary-btn,
+.manage-booking-public-page .button-fill,
+.public-my-bookings-page .v-primary-btn,
+.public-my-bookings-page .button-fill,
+.public-my-bookings-page .button.button-fill {
+  background-color: var(--vitta-text) !important;
+  background: var(--vitta-text) !important;
+  border-color: var(--vitta-text) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.public-book-page .v-primary-btn:disabled,
+.manage-booking-public-page .v-primary-btn:disabled,
+.public-my-bookings-page .v-primary-btn:disabled,
+.public-my-bookings-page .button-fill:disabled,
+.public-my-bookings-page .button.button-fill:disabled {
+  opacity: 0.6;
+  background-color: var(--vitta-text-2) !important;
+  color: #fff !important;
+}
+
+/* Pasos, staff y slots activos (gris demo) */
+.public-book-page .book-step-dot--active,
+.public-book-page .book-staff-btn--active,
+.public-book-page .book-slot-btn--active {
+  background: var(--vitta-text) !important;
+  border-color: var(--vitta-text) !important;
+  color: #fff !important;
+}
+
+/* Texto y labels en el book */
+.public-book-page .v-section-title,
+.public-book-page .ds-label,
+.public-book-page .ds-caption,
+.public-book-page .ds-muted,
+.public-book-page .book-service-name,
+.public-book-page .book-service-duration,
+.public-book-page .book-service-price,
+.public-book-page p {
+  color: var(--vitta-text) !important;
+}
+
+.public-book-page .ds-caption,
+.public-book-page .book-service-duration {
+  color: var(--vitta-text-2) !important;
+}
+
+/* Inputs y bordes suaves */
+.public-book-page .ds-input,
+.public-book-page .book-step-dot,
+.public-book-page .book-staff-btn,
+.public-book-page .book-slot-btn {
+  border-color: var(--vitta-divider);
+  background-color: var(--vitta-surface);
+  color: var(--vitta-text);
+}
+
+.public-book-page .book-client-found {
+  background: var(--vitta-surface);
+  color: var(--vitta-text);
+  border: 1px solid var(--vitta-divider);
+}
+.public-book-page .book-client-found p {
+  color: var(--vitta-text);
+}
+
+.public-book-page .book-success-card .v-section-title {
+  color: var(--vitta-accent);
+}
+
+/* Logo del tenant en book */
+.public-book-page .book-logo {
+  max-height: 80px;
+  max-width: 220px;
+}
+
+/* ========== Book: forzar gris demo (ganar sobre F7 y scoped) ========== */
+body .public-book-page .book-step-dot,
+body .public-book-page .book-step-dot--active,
+body .public-book-page .book-staff-btn,
+body .public-book-page .book-staff-btn--active,
+body .public-book-page .book-slot-btn,
+body .public-book-page .book-slot-btn--active {
+  border-color: #3C4048 !important;
+  color: #3C4048 !important;
+  -webkit-text-fill-color: #3C4048 !important;
+}
+
+body .public-book-page .book-step-dot--active,
+body .public-book-page .book-staff-btn--active,
+body .public-book-page .book-slot-btn--active {
+  background: #3C4048 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+body .public-book-page .v-section-title,
+body .public-book-page .ds-label,
+body .public-book-page .book-service-name,
+body .public-book-page .book-service-price,
+body .public-book-page .book-service-duration,
+body .public-book-page .ds-caption,
+body .public-book-page p,
+body .public-book-page a,
+body .public-book-page .v-list-item__title,
+body .public-book-page .v-list-item__after {
+  color: #3C4048 !important;
+  -webkit-text-fill-color: #3C4048 !important;
+}
+
+body .public-book-page .ds-caption,
+body .public-book-page .book-service-duration {
+  color: #6B7280 !important;
+  -webkit-text-fill-color: #6B7280 !important;
+}
+
+body .public-book-page .book-checkbox {
+  accent-color: #3C4048 !important;
+}
+
+/* Modal reprogramar (detalle del turno): colores del tenant */
+.booking-reschedule-popup .button-fill,
+.booking-reschedule-popup .slot-buttons .button.button-fill,
+.booking-reschedule-popup .button.button-fill {
+  background-color: #3C4048 !important;
+  background: #3C4048 !important;
+  border-color: #3C4048 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.booking-reschedule-popup .slot-buttons .button {
+  border-color: var(--vitta-divider);
+  color: var(--vitta-text);
+}
+.booking-reschedule-popup .page-content {
+  background-color: var(--vitta-bg);
+}
+.booking-reschedule-popup .navbar,
+.booking-reschedule-popup .navbar-inner {
+  background-color: var(--vitta-navbar);
+}
+.booking-reschedule-popup .navbar .navbar-title,
+.booking-reschedule-popup .navbar .left a,
+.booking-reschedule-popup .navbar .link {
+  color: #fff;
+}
+
+/* Modal extender turno */
+.extend-booking-popup .button-fill,
+.extend-booking-popup .button.button-fill {
+  background-color: #3C4048 !important;
+  background: #3C4048 !important;
+  border-color: #3C4048 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.extend-booking-popup .page-content {
+  background-color: var(--vitta-bg);
+}
+.extend-booking-popup .navbar,
+.extend-booking-popup .navbar-inner {
+  background-color: var(--vitta-navbar);
+}
+.extend-booking-popup .navbar .navbar-title,
+.extend-booking-popup .navbar .left a,
+.extend-booking-popup .navbar .link {
+  color: #fff;
+}
+
+/* Mis turnos: botón Buscar con colores del tenant */
+body .public-my-bookings-page .button-fill,
+body .public-my-bookings-page .button.button-fill {
+  background-color: #3C4048 !important;
+  background: #3C4048 !important;
+  border-color: #3C4048 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+body .public-my-bookings-page .button-fill:disabled,
+body .public-my-bookings-page .button.button-fill:disabled {
+  opacity: 0.6;
+  background-color: #6B7280 !important;
+  color: #fff !important;
+}

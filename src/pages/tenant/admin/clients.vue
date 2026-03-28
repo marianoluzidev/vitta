@@ -1,7 +1,11 @@
 
 <template>
   <f7-page class="admin-page">
-    <f7-navbar title="Clientes" />
+    <f7-navbar title="Clientes">
+      <f7-nav-right>
+        <f7-link href="#" @click.prevent="goToNew">Nuevo</f7-link>
+      </f7-nav-right>
+    </f7-navbar>
 
     <div class="ds-page-content">
       <VCard>
