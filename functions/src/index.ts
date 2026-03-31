@@ -1,97 +1,48 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import {
+  parseTime,
+  computeAvailableSlots,
+  validateNewBookingTimes,
+  intervalsOverlap,
+  getWeekdayFromDate,
+  type Schedule,
+  type StaffException,
+  type BookingOnDay,
+  type DayKey,
+} from './slotEngineCore';
 
 admin.initializeApp();
 
 const db = admin.firestore();
-const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
-type DayKey = (typeof DAY_KEYS)[number];
-
-function parseTime(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-}
-function minutesToTime(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-function getWeekdayFromDate(dateStr: string): DayKey {
-  const d = new Date(dateStr + 'T12:00:00');
-  return DAY_KEYS[d.getDay()];
-}
-
-interface Interval {
-  start: number;
-  end: number;
-}
-function mergeIntervals(intervals: Interval[]): Interval[] {
-  if (intervals.length <= 1) return intervals;
-  const sorted = [...intervals].sort((a, b) => a.start - b.start);
-  const out: Interval[] = [{ ...sorted[0] }];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = out[out.length - 1];
-    if (sorted[i].start <= last.end) last.end = Math.max(last.end, sorted[i].end);
-    else out.push({ ...sorted[i] });
-  }
-  return out;
-}
-function subtractIntervals(open: Interval[], busy: Interval[]): Interval[] {
-  let result = open.map((i) => ({ ...i }));
-  for (const b of busy) {
-    const next: Interval[] = [];
-    for (const a of result) {
-      if (b.end <= a.start || b.start >= a.end) next.push(a);
-      else {
-        if (a.start < b.start) next.push({ start: a.start, end: b.start });
-        if (b.end < a.end) next.push({ start: b.end, end: a.end });
-      }
-    }
-    result = mergeIntervals(next);
-  }
-  return result;
-}
-
-interface ScheduleBlock {
-  start: string;
-  end: string;
-  breaks: Array<{ start: string; end: string }>;
-}
-
-function openFromBlocks(blocks: ScheduleBlock[]): Interval[] {
-  const open: Interval[] = [];
-  for (const block of blocks) {
-    const start = parseTime(block.start);
-    const end = parseTime(block.end);
-    const breakInts: Interval[] = (block.breaks || []).map((br) => ({
-      start: parseTime(br.start),
-      end: parseTime(br.end),
-    }));
-    const free = subtractIntervals([{ start, end }], breakInts);
-    open.push(...free);
-  }
-  return mergeIntervals(open);
-}
-
-function blockedFromBreaks(blocks: ScheduleBlock[]): Interval[] {
-  const out: Interval[] = [];
-  for (const block of blocks || []) {
-    for (const br of block.breaks || []) {
-      out.push({ start: parseTime(br.start), end: parseTime(br.end) });
-    }
-  }
-  return mergeIntervals(out);
-}
-
 const STEP = 15;
+
+function staffExceptionsFromDocs(docs: admin.firestore.QueryDocumentSnapshot[]): StaffException[] {
+  return docs.map((doc) => {
+    const d = doc.data();
+    return {
+      date: d.date ?? '',
+      type: d.type === 'range' ? 'range' : 'full_day',
+      start: d.start ?? null,
+      end: d.end ?? null,
+    };
+  });
+}
 
 /**
  * Devuelve slots disponibles para un staff en una fecha (para reserva pública).
+ * excludeBookingId: al reprogramar, excluir el turno actual para que su hueco siga apareciendo.
  */
 export const getAvailableSlots = functions.https.onCall(
   async (request) => {
-    const data = request.data as { tenantId: string; staffId: string; date: string; durationMinutes: number };
-    const { tenantId, staffId, date, durationMinutes } = data;
+    const data = request.data as {
+      tenantId: string;
+      staffId: string;
+      date: string;
+      durationMinutes: number;
+      excludeBookingId?: string;
+    };
+    const { tenantId, staffId, date, durationMinutes, excludeBookingId } = data;
     if (!tenantId || !staffId || !date || durationMinutes <= 0) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid parameters');
     }
@@ -106,23 +57,15 @@ export const getAvailableSlots = functions.https.onCall(
       throw new functions.https.HttpsError('not-found', 'Staff not found');
     }
     const staffData = staffSnap.data()!;
-    const schedule = (staffData.schedule ?? {}) as Record<string, ScheduleBlock[]>;
-    const dayEnabled = (staffData.dayEnabled ?? {}) as Record<string, boolean>;
-    const day = getWeekdayFromDate(date);
-    const blocks = schedule[day] ?? [];
-    if (dayEnabled[day] === false || blocks.length === 0) {
+    const schedule = (staffData.schedule ?? {}) as Schedule;
+    const dayEnabled = (staffData.dayEnabled ?? {}) as Record<DayKey, boolean>;
+    const dayKey = getWeekdayFromDate(date);
+    const blocks = schedule[dayKey] ?? [];
+    if (dayEnabled[dayKey] === false || blocks.length === 0) {
       return { slots: [] };
     }
-    const open = openFromBlocks(blocks);
-    const blockedByBreaks = blockedFromBreaks(blocks);
     const exceptionsSnap = await staffRef.collection('exceptions').where('date', '==', date).get();
-    const blockedByExceptions: Interval[] = [];
-    exceptionsSnap.docs.forEach((doc) => {
-      const d = doc.data();
-      if (d.type === 'full_day') blockedByExceptions.push({ start: 0, end: 24 * 60 });
-      else if (d.type === 'range' && d.start && d.end)
-        blockedByExceptions.push({ start: parseTime(d.start), end: parseTime(d.end) });
-    });
+    const exceptions = staffExceptionsFromDocs(exceptionsSnap.docs);
     const bookingsSnap = await db
       .collection('tenants')
       .doc(tenantId)
@@ -130,25 +73,18 @@ export const getAvailableSlots = functions.https.onCall(
       .where('staffId', '==', staffId)
       .where('date', '==', date)
       .get();
-    const blockedByBookings: Interval[] = bookingsSnap.docs
-      .filter((d) => (d.data().status ?? '') !== 'cancelled')
+    const bookings: BookingOnDay[] = bookingsSnap.docs
+      .filter((d) => !excludeBookingId || d.id !== excludeBookingId)
       .map((d) => {
         const x = d.data();
-        return { start: parseTime(x.startTime ?? '00:00'), end: parseTime(x.endTime ?? '00:00') };
+        return {
+          startTime: x.startTime ?? '00:00',
+          endTime: x.endTime ?? '00:00',
+          status: x.status,
+        };
       });
-    const allBlocked = mergeIntervals([...blockedByBreaks, ...blockedByExceptions, ...blockedByBookings]);
-    const free = subtractIntervals(open, allBlocked);
-    const slots: Array<{ start: string; end: string }> = [];
-    for (const iv of free) {
-      let t = iv.start;
-      while (t + durationMinutes <= iv.end) {
-        const endMin = t + durationMinutes;
-        const overlaps = allBlocked.some((b) => t < b.end && endMin > b.start);
-        if (!overlaps) slots.push({ start: minutesToTime(t), end: minutesToTime(endMin) });
-        t += STEP;
-      }
-    }
-    return { slots };
+    const slots = computeAvailableSlots(schedule, exceptions, bookings, date, durationMinutes, STEP, dayEnabled);
+    return { slots: slots.map((s) => ({ start: s.start, end: s.end })) };
   }
 );
 
@@ -251,6 +187,36 @@ export const createPublicBooking = functions.https.onCall(
       });
       clientId = newClient.id;
     }
+
+    const staffSchedule = (staffData.schedule ?? {}) as Schedule;
+    const staffDayEnabled = (staffData.dayEnabled ?? {}) as Record<DayKey, boolean>;
+    const [exSnapCreate, bookSnapCreate] = await Promise.all([
+      tenantRef.collection('staff').doc(payload.staffId).collection('exceptions').where('date', '==', payload.date).get(),
+      tenantRef
+        .collection('bookings')
+        .where('staffId', '==', payload.staffId)
+        .where('date', '==', payload.date)
+        .get(),
+    ]);
+    const exListCreate = staffExceptionsFromDocs(exSnapCreate.docs);
+    const existingForRulesCreate: BookingOnDay[] = bookSnapCreate.docs.map((d) => {
+      const x = d.data();
+      return { startTime: x.startTime ?? '00:00', endTime: x.endTime ?? '00:00', status: x.status };
+    });
+    const rulesCheckCreate = validateNewBookingTimes({
+      schedule: staffSchedule,
+      dayEnabled: staffDayEnabled,
+      date: payload.date,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      totalDurationMinutes: totalDuration,
+      exceptions: exListCreate,
+      existingBookings: existingForRulesCreate,
+    });
+    if (!rulesCheckCreate.ok) {
+      throw new functions.https.HttpsError('failed-precondition', `BOOKING_${rulesCheckCreate.reason}`);
+    }
+
     const lockId = `${payload.staffId}_${payload.date}`;
     const lockRef = tenantRef.collection('locks').doc(lockId);
     const slotStateRef = tenantRef.collection('slotState').doc(lockId);
@@ -295,10 +261,13 @@ export const createPublicBooking = functions.https.onCall(
       const slots: Array<{ startTime: string; endTime: string }> = slotStateSnap.exists
         ? (slotStateSnap.data()?.slots ?? [])
         : [];
-      const overlaps = slots.some(
-        (s) =>
-          parseTime(s.startTime) < parseTime(payload.endTime) &&
-          parseTime(s.endTime) > parseTime(payload.startTime)
+      const overlaps = slots.some((s) =>
+        intervalsOverlap(
+          parseTime(s.startTime),
+          parseTime(s.endTime),
+          parseTime(payload.startTime),
+          parseTime(payload.endTime)
+        )
       );
       if (overlaps) {
         throw new functions.https.HttpsError('failed-precondition', 'SLOT_TAKEN');
@@ -572,24 +541,94 @@ export const rescheduleBookingPublic = functions.https.onCall(
     const prevStatus = b.status ?? 'pending';
     const historyEntry = { at: admin.firestore.FieldValue.serverTimestamp(), from: prevStatus, to: prevStatus, by: { type: 'client' }, note: 'rescheduled' };
 
+    const staffRefRes = db.collection('tenants').doc(tenantId).collection('staff').doc(staffId);
+    const staffSnapRes = await staffRefRes.get();
+    if (!staffSnapRes.exists) {
+      throw new functions.https.HttpsError('not-found', 'Staff not found');
+    }
+    const staffDataRes = staffSnapRes.data()!;
+    const staffScheduleRes = (staffDataRes.schedule ?? {}) as Schedule;
+    const staffDayEnabledRes = (staffDataRes.dayEnabled ?? {}) as Record<DayKey, boolean>;
+    const totalDurationRes = Number(b.totalDurationMinutes ?? 0);
+    const [exSnapRes, bookSnapRes] = await Promise.all([
+      staffRefRes.collection('exceptions').where('date', '==', newDate).get(),
+      db
+        .collection('tenants')
+        .doc(tenantId)
+        .collection('bookings')
+        .where('staffId', '==', staffId)
+        .where('date', '==', newDate)
+        .get(),
+    ]);
+    const exListRes = staffExceptionsFromDocs(exSnapRes.docs);
+    const existingForRulesRes: BookingOnDay[] = bookSnapRes.docs
+      .filter((d) => d.id !== bookingId)
+      .map((d) => {
+        const x = d.data();
+        return { startTime: x.startTime ?? '00:00', endTime: x.endTime ?? '00:00', status: x.status };
+      });
+    const rulesCheckRes = validateNewBookingTimes({
+      schedule: staffScheduleRes,
+      dayEnabled: staffDayEnabledRes,
+      date: newDate,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      totalDurationMinutes: totalDurationRes,
+      exceptions: exListRes,
+      existingBookings: existingForRulesRes,
+    });
+    if (!rulesCheckRes.ok) {
+      throw new functions.https.HttpsError('failed-precondition', `BOOKING_${rulesCheckRes.reason}`);
+    }
+
+    const newStartM = parseTime(newStartTime);
+    const newEndM = parseTime(newEndTime);
+    const sameSlotStateDoc = oldLockId === newLockId;
+    const newSlot = { startTime: newStartTime, endTime: newEndTime };
+
     await db.runTransaction(async (tx) => {
       const oldSnap = await tx.get(oldSlotStateRef);
+      const newSnap = sameSlotStateDoc ? oldSnap : await tx.get(newSlotStateRef);
       const oldSlots: Array<{ startTime: string; endTime: string }> = oldSnap.exists ? (oldSnap.data()?.slots ?? []) : [];
       const withoutOld = oldSlots.filter((s) => !(s.startTime === oldStart && s.endTime === oldEnd));
-      if (oldSnap.exists) {
-        tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-      }
-      const newSnap = await tx.get(newSlotStateRef);
-      let newSlots: Array<{ startTime: string; endTime: string }> = newSnap.exists ? (newSnap.data()?.slots ?? []) : [];
-      const overlap = newSlots.some((s) => s.startTime === newStartTime && s.endTime === newEndTime);
-      if (overlap) {
-        throw new functions.https.HttpsError('failed-precondition', 'SLOT_TAKEN');
-      }
-      newSlots.push({ startTime: newStartTime, endTime: newEndTime });
-      if (newSnap.exists) {
-        tx.update(newSlotStateRef, { slots: newSlots, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+      if (sameSlotStateDoc) {
+        const overlap = withoutOld.some((s) =>
+          intervalsOverlap(parseTime(s.startTime), parseTime(s.endTime), newStartM, newEndM)
+        );
+        if (overlap) {
+          throw new functions.https.HttpsError('failed-precondition', 'SLOT_TAKEN');
+        }
+        const merged = [...withoutOld, newSlot];
+        if (oldSnap.exists) {
+          tx.update(oldSlotStateRef, { slots: merged, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        } else {
+          tx.set(oldSlotStateRef, { staffId, date: newDate, slots: merged, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
       } else {
-        tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const otherDaySlots: Array<{ startTime: string; endTime: string }> = newSnap.exists
+          ? (newSnap.data()?.slots ?? [])
+          : [];
+        const overlap = otherDaySlots.some((s) =>
+          intervalsOverlap(parseTime(s.startTime), parseTime(s.endTime), newStartM, newEndM)
+        );
+        if (overlap) {
+          throw new functions.https.HttpsError('failed-precondition', 'SLOT_TAKEN');
+        }
+        const mergedNewDay = [...otherDaySlots, newSlot];
+        if (oldSnap.exists) {
+          tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        if (newSnap.exists) {
+          tx.update(newSlotStateRef, { slots: mergedNewDay, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        } else {
+          tx.set(newSlotStateRef, {
+            staffId,
+            date: newDate,
+            slots: mergedNewDay,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
       }
       tx.update(bookingRef, {
         date: newDate,

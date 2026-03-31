@@ -1,12 +1,17 @@
 /**
  * Lógica para extender un turno: calcular máximo horario de fin sin conflictos
  * y persistir la extensión con historial.
+ *
+ * El tope de extensión no está limitado por el fin del bloque de disponibilidad:
+ * solo por breaks, excepciones y otros turnos (misma filosofía que el motor de slots).
  */
 import {
-  getFreeIntervalsOnDay,
+  mergeIntervals,
+  blockedFromBreaks,
   parseTime,
   minutesToTime,
   getWeekdayFromDate,
+  intervalsOverlap,
   type Schedule,
   type StaffException,
   type BookingOnDay,
@@ -28,7 +33,6 @@ import {
   type UpdateData,
 } from 'firebase/firestore';
 
-const DAY_KEYS: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const STEP_MINUTES = 15;
 
 export interface MaxEndResult {
@@ -57,9 +61,14 @@ export interface ExtendedHistoryEntry {
   at: unknown;
 }
 
+interface Interval {
+  start: number;
+  end: number;
+}
+
 /**
  * Calcula el máximo horario de fin hasta donde se puede extender el turno
- * sin solaparse con otro turno, break o excepción.
+ * sin solaparse con otro turno, break o excepción (sin tope artificial por fin de jornada).
  */
 export async function getMaxEndTime(
   tenantId: string,
@@ -73,21 +82,7 @@ export async function getMaxEndTime(
   const startMin = parseTime(currentStartTime);
   const endMin = parseTime(currentEndTime);
 
-  console.log('[Extend] getMaxEndTime', {
-    tenantId,
-    staffId,
-    date,
-    bookingId,
-    currentStartTime,
-    currentEndTime,
-    startMin,
-    endMin,
-    startMinValid: Number.isFinite(startMin),
-    endMinValid: Number.isFinite(endMin),
-  });
-
   if (!Number.isFinite(startMin) || !Number.isFinite(endMin)) {
-    console.log('[Extend] Salida temprana: startMin o endMin inválidos');
     return {
       maxEndTime: currentEndTime,
       canExtend: false,
@@ -117,7 +112,6 @@ export async function getMaxEndTime(
   const schedule: Schedule = (staffSnap.exists() && (staffSnap.data()?.schedule as Schedule)) || ({} as Schedule);
   const dayEnabled = staffSnap.exists() ? (staffSnap.data()?.dayEnabled as Record<DayKey, boolean> | undefined) : undefined;
 
-  const allBookingIds = bookingsSnap.docs.map((d) => d.id);
   const bookings: BookingOnDay[] = bookingsSnap.docs
     .filter((d) => d.id !== currentBookingId)
     .map((d) => {
@@ -128,16 +122,6 @@ export async function getMaxEndTime(
         status: data.status ?? '',
       };
     });
-
-  console.log('[Extend] Datos cargados', {
-    staffExists: staffSnap.exists(),
-    scheduleKeys: staffSnap.exists() ? Object.keys(staffSnap.data()?.schedule ?? {}) : [],
-    allBookingIds,
-    currentBookingId,
-    otherBookingsCount: bookings.length,
-    otherBookings: bookings.map((b) => ({ start: b.startTime, end: b.endTime, status: b.status })),
-    exceptionsCount: exceptionsSnap.docs.length,
-  });
 
   const exceptions: StaffException[] = exceptionsSnap.docs.map((d) => {
     const data = d.data();
@@ -151,31 +135,12 @@ export async function getMaxEndTime(
 
   const day = getWeekdayFromDate(date);
   const blocks = schedule[day] ?? [];
-  let useFallback = blocks.length === 0 || (dayEnabled && dayEnabled[day] === false);
-
-  console.log('[Extend] Día y bloques', { day, blocksCount: blocks.length, dayEnabled: dayEnabled?.[day], useFallback });
+  const useFallback = blocks.length === 0 || (dayEnabled && dayEnabled[day] === false);
 
   let maxEndMin = endMin;
 
-  if (!useFallback) {
-    const freeIntervals = getFreeIntervalsOnDay(schedule, exceptions, bookings, date, dayEnabled ?? null);
-    const containing = freeIntervals.find((iv) => iv.start <= startMin && iv.end >= endMin);
-    console.log('[Extend] Intervalos libres', {
-      freeIntervalsCount: freeIntervals.length,
-      freeIntervals: freeIntervals.map((iv) => ({ start: iv.start, end: iv.end })),
-      containing: containing ? { start: containing.start, end: containing.end } : null,
-      containingHasRoom: containing ? containing.end > endMin : false,
-    });
-    if (containing && containing.end > endMin) {
-      maxEndMin = containing.end;
-    } else {
-      useFallback = true;
-    }
-  }
-
   if (useFallback) {
-    // Sin disponibilidad cargada o sin hueco: extender hasta el próximo turno o 20:00
-    const endOfDayDefault = 20 * 60; // 20:00
+    const endOfDayDefault = 20 * 60;
     const limits: number[] = [endOfDayDefault];
 
     for (const b of bookings) {
@@ -194,21 +159,42 @@ export async function getMaxEndTime(
     const validLimits = limits.filter(Number.isFinite);
     const minLimit = validLimits.length > 0 ? Math.min(...validLimits) : endOfDayDefault;
     if (minLimit > endMin) maxEndMin = minLimit;
+  } else {
+    const blockedByBreaks = blockedFromBreaks(blocks);
+    const blockedByExceptions: Interval[] = [];
+    for (const ex of exceptions) {
+      if (ex.type === 'full_day') {
+        return {
+          maxEndTime: currentEndTime,
+          canExtend: false,
+          rightBoundTime: currentEndTime,
+        };
+      }
+      if (ex.type === 'range' && ex.start != null && ex.end != null) {
+        blockedByExceptions.push({ start: parseTime(ex.start), end: parseTime(ex.end) });
+      }
+    }
+    const blockedByBookings: Interval[] = bookings
+      .filter((b) => (b.status ?? '') !== 'cancelled')
+      .map((b) => ({
+        start: parseTime(b.startTime),
+        end: parseTime(b.endTime),
+      }));
+    const allBlocked = mergeIntervals([...blockedByBreaks, ...blockedByExceptions, ...blockedByBookings]);
 
-    console.log('[Extend] Fallback', {
-      limits,
-      validLimits,
-      minLimit,
-      endMin,
-      maxEndMinAfterFallback: maxEndMin,
-      canExtendAfterFallback: maxEndMin > endMin,
-    });
+    let t = endMin + STEP_MINUTES;
+    const dayCap = 24 * 60;
+    while (t <= dayCap) {
+      if (allBlocked.some((block) => intervalsOverlap(startMin, t, block.start, block.end))) {
+        break;
+      }
+      maxEndMin = t;
+      t += STEP_MINUTES;
+    }
   }
 
   const maxEndTime = minutesToTime(maxEndMin);
   const canExtend = maxEndMin > endMin;
-
-  console.log('[Extend] Resultado final', { maxEndTime, maxEndMin, endMin, canExtend });
 
   return {
     maxEndTime,

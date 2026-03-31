@@ -57,7 +57,7 @@ export default defineComponent({ name: 'ClientSheetPicker' });
           <f7-button small fill @click="selectExistingByDni">Seleccionar ese cliente</f7-button>
         </f7-block>
         <f7-list form>
-          <f7-list-input label="DNI" type="text" placeholder="Requerido" v-model:value="createForm.dni" clear-button />
+          <f7-list-input label="DNI (opcional)" type="text" placeholder="Ej. 12345678" v-model:value="createForm.dni" clear-button />
           <f7-list-input label="Nombre" type="text" placeholder="Requerido" v-model:value="createForm.firstName" clear-button />
           <f7-list-input label="Apellido" type="text" placeholder="Requerido" v-model:value="createForm.lastName" clear-button />
           <f7-list-input label="Teléfono" type="tel" v-model:value="createForm.phone" clear-button />
@@ -125,10 +125,9 @@ const filteredClients = computed(() => {
 });
 
 const canCreateClient = computed(() => {
-  const d = createForm.value.dni.trim();
   const first = createForm.value.firstName.trim();
   const last = createForm.value.lastName.trim();
-  return d.length > 0 && (first.length > 0 || last.length > 0);
+  return first.length > 0 || last.length > 0;
 });
 
 function displayName(c: ClientOption): string {
@@ -178,18 +177,20 @@ async function submitCreateClient(): Promise<void> {
   const dni = createForm.value.dni.trim();
   createDuplicateDni.value = false;
   duplicateClient.value = null;
-  const existing = await checkDniExists(dni);
-  if (existing) {
-    createDuplicateDni.value = true;
-    duplicateClient.value = existing;
-    return;
+  if (dni) {
+    const existing = await checkDniExists(dni);
+    if (existing) {
+      createDuplicateDni.value = true;
+      duplicateClient.value = existing;
+      return;
+    }
   }
   createSaving.value = true;
   try {
     const db = getDbInstance();
     const ref = collection(db, 'tenants', tid, 'clients');
     const docRef = await addDoc(ref, {
-      dni: createForm.value.dni.trim(),
+      dni: dni,
       firstName: createForm.value.firstName.trim(),
       lastName: createForm.value.lastName.trim(),
       phone: createForm.value.phone.trim(),
@@ -199,7 +200,7 @@ async function submitCreateClient(): Promise<void> {
     });
     const newClient: ClientOption = {
       id: docRef.id,
-      dni: createForm.value.dni.trim(),
+      dni: dni || undefined,
       firstName: createForm.value.firstName.trim(),
       lastName: createForm.value.lastName.trim(),
       phone: createForm.value.phone.trim(),

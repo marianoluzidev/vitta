@@ -35,7 +35,7 @@
             :disabled="saving"
           />
         </VFormField>
-        <VFormField label="DNI">
+        <VFormField label="DNI (opcional)">
           <input
             v-model="form.dni"
             type="text"

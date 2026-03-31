@@ -1,7 +1,7 @@
 {
   "name": "vitta",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.10",
   "description": "Vitta",
   "repository": "",
   "license": "UNLICENSED",
@@ -9,6 +9,7 @@
     "start": "npm run dev",
     "dev": "cross-env NODE_ENV=development vite",
     "build": "cross-env NODE_ENV=production vite build && npx workbox generateSW workbox-config.js && node scripts/write-version-json.js",
+    "test": "vitest run",
     "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/",
     "set:owner": "node tools/set-owner-claim.js --email=\"YOUR_EMAIL_HERE\"",
     "deploy:functions": "npm run build --prefix functions && firebase deploy --only functions"
@@ -42,6 +43,7 @@
     "postcss-preset-env": "^10.6.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
+    "vitest": "^3.2.4",
     "workbox-cli": "^7.4.0"
   }
 }

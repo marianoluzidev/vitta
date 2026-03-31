@@ -149,18 +149,15 @@ import ClientSheetPicker from '../../../components/ClientSheetPicker.vue';
 import VCard from '../../../components/ui/VCard.vue';
 import VSectionTitle from '../../../components/ui/VSectionTitle.vue';
 import VListItem from '../../../components/ui/VListItem.vue';
-import { computeAvailableSlots, parseTime, type Schedule } from '../../../services/slotEngine';
+import {
+  computeAvailableSlots,
+  parseTime,
+  validateNewBookingTimes,
+  intervalsOverlap,
+  type Schedule,
+} from '../../../services/slotEngine';
 
 const SLOT_STEP = 15;
-
-function timeOverlaps(
-  newStartMin: number,
-  newEndMin: number,
-  existingStartMin: number,
-  existingEndMin: number
-): boolean {
-  return newStartMin < existingEndMin && existingStartMin < newEndMin;
-}
 
 const route = useRoute();
 const router = useRouter();
@@ -436,6 +433,22 @@ async function handleSave(): Promise<void> {
     const newStartMin = parseTime(startTime);
     const newEndMin = parseTime(endTime);
 
+    const rules = validateNewBookingTimes({
+      schedule: (staff?.schedule ?? {}) as Schedule,
+      dayEnabled: staff?.dayEnabled ?? undefined,
+      date,
+      startTime,
+      endTime,
+      totalDurationMinutes: selectedServicesTotal.value.duration,
+      exceptions: exceptionsForDate.value,
+      existingBookings: bookingsForDate.value,
+    });
+    if (!rules.ok) {
+      slotTakenError.value = true;
+      saving.value = false;
+      return;
+    }
+
     const servicesSnapshot = form.serviceIds
       .map((id) => allServices.value.find((s) => s.id === id))
       .filter(Boolean)
@@ -495,7 +508,7 @@ async function handleSave(): Promise<void> {
       for (const slot of slots) {
         const existingStart = parseTime(slot.startTime ?? '');
         const existingEnd = parseTime(slot.endTime ?? '');
-        if (timeOverlaps(newStartMin, newEndMin, existingStart, existingEnd)) {
+        if (intervalsOverlap(newStartMin, newEndMin, existingStart, existingEnd)) {
           const err = new Error('SLOT_TAKEN');
           (err as Error & { code?: string }).code = 'SLOT_TAKEN';
           throw err;

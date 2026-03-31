@@ -78,9 +78,9 @@ import {
   validateManageToken,
   cancelBookingPublic,
   rescheduleBookingPublic,
-  getAvailableSlots,
   type ManageBookingInfo,
 } from '../services/publicBookingApi';
+import { loadRescheduleSlots } from '../services/rescheduleSlots';
 
 const route = useRoute();
 const router = useRouter();
@@ -168,7 +168,13 @@ watch(
     rescheduleSlotsLoading.value = true;
     rescheduleError.value = '';
     try {
-      const slots = await getAvailableSlots(tid, staffId, date, duration);
+      const slots = await loadRescheduleSlots({
+        tenantId: tid,
+        staffId,
+        date,
+        durationMinutes: duration,
+        excludeBookingId: bookingId.value,
+      });
       rescheduleSlots.value = slots;
     } catch {
       rescheduleSlots.value = [];

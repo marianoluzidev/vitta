@@ -127,7 +127,8 @@ import { getDbInstance } from '../../../firebase/firebase';
 import { getCurrentUser } from '../../../auth/session';
 import { f7ready } from 'framework7-vue';
 import { getTenantBookingSettings, canCancelByWindow, canRescheduleByWindow } from '../../../services/tenantBookingSettings';
-import { getAvailableSlots } from '../../../services/publicBookingApi';
+import { loadRescheduleSlots } from '../../../services/rescheduleSlots';
+import { parseTime, intervalsOverlap } from '../../../services/slotEngine';
 
 interface ServiceSnap {
   name?: string;
@@ -497,7 +498,13 @@ watch(
     rescheduleSlotsLoading.value = true;
     rescheduleError.value = '';
     try {
-      const slots = await getAvailableSlots(tid, staffId, date, duration);
+      const slots = await loadRescheduleSlots({
+        tenantId: tid,
+        staffId,
+        date,
+        durationMinutes: duration,
+        excludeBookingId: bookingId.value,
+      });
       rescheduleSlots.value = slots;
     } catch (e) {
       rescheduleSlots.value = [];
@@ -539,28 +546,50 @@ async function confirmReschedule(): Promise<void> {
     };
     const newStartAt = new Date(`${newDate}T${newStart}:00`);
     const newEndAt = new Date(`${newDate}T${newEnd}:00`);
+    const newStartM = parseTime(newStart);
+    const newEndM = parseTime(newEnd);
+
+    const sameSlotStateDoc = oldLockId === newLockId;
 
     await runTransaction(db, async (tx) => {
       // Todas las lecturas primero (Firestore lo exige)
       const oldSnap = await tx.get(oldSlotStateRef);
-      const newSnap = await tx.get(newSlotStateRef);
+      const newSnap = sameSlotStateDoc ? oldSnap : await tx.get(newSlotStateRef);
 
       const oldSlots: Array<{ startTime: string; endTime: string }> = oldSnap.exists() ? (oldSnap.data().slots ?? []) : [];
       const withoutOld = oldSlots.filter((s) => !(s.startTime === oldStart && s.endTime === oldEnd));
 
-      const newSlots: Array<{ startTime: string; endTime: string }> = newSnap.exists() ? (newSnap.data().slots ?? []) : [];
-      const overlap = newSlots.some((s) => s.startTime === newStart && s.endTime === newEnd);
-      if (overlap) throw new Error('SLOT_TAKEN');
-      newSlots.push({ startTime: newStart, endTime: newEnd });
+      const newSlot = { startTime: newStart, endTime: newEnd };
 
-      // Luego todas las escrituras
-      if (oldSnap.exists()) {
-        tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: serverTimestamp() });
-      }
-      if (newSnap.exists()) {
-        tx.update(newSlotStateRef, { slots: newSlots, updatedAt: serverTimestamp() });
+      if (sameSlotStateDoc) {
+        // Mismo día: el slot del turno que movemos sigue en el doc; hay que quitarlo antes del overlap y escribir una sola vez
+        const overlap = withoutOld.some((s) =>
+          intervalsOverlap(parseTime(s.startTime), parseTime(s.endTime), newStartM, newEndM)
+        );
+        if (overlap) throw new Error('SLOT_TAKEN');
+        const merged = [...withoutOld, newSlot];
+        if (oldSnap.exists()) {
+          tx.update(oldSlotStateRef, { slots: merged, updatedAt: serverTimestamp() });
+        } else {
+          tx.set(oldSlotStateRef, { staffId, date: newDate, slots: merged, updatedAt: serverTimestamp() });
+        }
       } else {
-        tx.set(newSlotStateRef, { staffId, date: newDate, slots: newSlots, updatedAt: serverTimestamp() });
+        const otherDaySlots: Array<{ startTime: string; endTime: string }> = newSnap.exists()
+          ? (newSnap.data().slots ?? [])
+          : [];
+        const overlap = otherDaySlots.some((s) =>
+          intervalsOverlap(parseTime(s.startTime), parseTime(s.endTime), newStartM, newEndM)
+        );
+        if (overlap) throw new Error('SLOT_TAKEN');
+        const mergedNewDay = [...otherDaySlots, newSlot];
+        if (oldSnap.exists()) {
+          tx.update(oldSlotStateRef, { slots: withoutOld, updatedAt: serverTimestamp() });
+        }
+        if (newSnap.exists()) {
+          tx.update(newSlotStateRef, { slots: mergedNewDay, updatedAt: serverTimestamp() });
+        } else {
+          tx.set(newSlotStateRef, { staffId, date: newDate, slots: mergedNewDay, updatedAt: serverTimestamp() });
+        }
       }
       const patch: UpdateData<BookingDoc> & Record<string, unknown> = {
         date: newDate,
