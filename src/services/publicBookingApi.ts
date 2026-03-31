@@ -54,14 +54,16 @@ export async function getAvailableSlots(
   tenantId: string,
   staffId: string,
   date: string,
-  durationMinutes: number
+  durationMinutes: number,
+  /** Al reprogramar un turno, excluirlo para que su horario siga ofreciéndose como candidato */
+  excludeBookingId?: string
 ): Promise<SlotOption[]> {
   const fn = getFunctionsInstance();
-  const call = httpsCallable<{ tenantId: string; staffId: string; date: string; durationMinutes: number }, { slots: SlotOption[] }>(
-    fn,
-    'getAvailableSlots'
-  );
-  const res = await call({ tenantId, staffId, date, durationMinutes });
+  const call = httpsCallable<
+    { tenantId: string; staffId: string; date: string; durationMinutes: number; excludeBookingId?: string },
+    { slots: SlotOption[] }
+  >(fn, 'getAvailableSlots');
+  const res = await call({ tenantId, staffId, date, durationMinutes, excludeBookingId });
   return (res.data?.slots ?? []) as SlotOption[];
 }
 

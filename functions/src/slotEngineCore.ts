@@ -1,14 +1,6 @@
 /**
- * Motor de slots: dado disponibilidad semanal, excepciones y turnos existentes,
- * devuelve los slots disponibles para un día y duración.
- * Representación interna en minutos desde 00:00; intervalos normalizados y fusionados.
- *
- * Regla de negocio (última hora de INICIO, no de fin):
- * - El turno puede empezar en cualquier instante dentro del bloque de disponibilidad
- *   (incluido el horario de fin del bloque, p. ej. 18:00 si el bloque termina 18:00).
- * - El turno puede terminar después del fin del bloque.
- * - Debe evitar solapamiento con breaks, excepciones y otros turnos (intervalos contiguos
- *   fin==inicio NO cuentan como solapamiento).
+ * Copia alineada con src/services/slotEngine.ts — mantener ambas en sync al cambiar reglas de agenda.
+ * @see src/services/slotEngine.ts
  */
 
 export const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
@@ -63,7 +55,6 @@ export function getWeekdayFromDate(dateStr: string): DayKey {
   return DAY_KEYS[d.getDay()];
 }
 
-/** Fusiona intervalos solapados, ordenados por start */
 export function mergeIntervals(intervals: Interval[]): Interval[] {
   if (intervals.length <= 1) return intervals;
   const sorted = [...intervals].sort((a, b) => a.start - b.start);
@@ -79,7 +70,6 @@ export function mergeIntervals(intervals: Interval[]): Interval[] {
   return out;
 }
 
-/** open - busy (resta de intervalos) */
 export function subtractIntervals(open: Interval[], busy: Interval[]): Interval[] {
   let result: Interval[] = open.map((i) => ({ ...i }));
   for (const b of busy) {
@@ -97,16 +87,7 @@ export function subtractIntervals(open: Interval[], busy: Interval[]): Interval[
   return mergeIntervals(result);
 }
 
-/**
- * Dos tramos [aStart,aEnd) y [bStart,bEnd) se solapan con tiempo compartido estricto.
- * Si uno termina exactamente cuando el otro empieza, NO hay solapamiento.
- */
-export function intervalsOverlap(
-  aStart: number,
-  aEnd: number,
-  bStart: number,
-  bEnd: number
-): boolean {
+export function intervalsOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
 
@@ -136,12 +117,10 @@ export function blockedFromBreaks(blocks: ScheduleBlock[]): Interval[] {
   return mergeIntervals(out);
 }
 
-/** Inicio permitido si cae dentro de algún intervalo abierto (inclusive en ambos extremos del bloque). */
 export function isStartWithinOpenIntervals(startMinutes: number, openIntervals: Interval[]): boolean {
   return openIntervals.some((iv) => startMinutes >= iv.start && startMinutes <= iv.end);
 }
 
-/** [start,end) del turno intersecta bloqueos (breaks, excepciones, otros turnos)? */
 export function bookingIntersectsBlocked(
   startMinutes: number,
   endMinutes: number,
@@ -150,16 +129,6 @@ export function bookingIntersectsBlocked(
   return mergedBlocked.some((b) => intervalsOverlap(startMinutes, endMinutes, b.start, b.end));
 }
 
-/**
- * Calcula slots disponibles para un día.
- * @param schedule Disponibilidad semanal (blocks + breaks por día)
- * @param exceptions Excepciones para ese date (full_day o range)
- * @param bookings Turnos del staff en ese date (se excluyen cancelled)
- * @param date YYYY-MM-DD
- * @param durationMinutes Duración total del turno
- * @param stepMinutes Paso entre candidatos (ej 15)
- * @param dayEnabled Opcional: si false para ese día, devuelve []
- */
 export function computeAvailableSlots(
   schedule: Schedule,
   exceptions: StaffException[],
@@ -220,37 +189,6 @@ export function computeAvailableSlots(
   return slots;
 }
 
-/**
- * Devuelve los intervalos libres del día (en minutos desde 00:00),
- * considerando disponibilidad, excepciones y otros turnos.
- * Útil para vistas que muestran “huecos” dentro del horario laboral.
- */
-export function getFreeIntervalsOnDay(
-  schedule: Schedule,
-  exceptions: StaffException[],
-  bookings: BookingOnDay[],
-  date: string,
-  dayEnabled?: Record<DayKey, boolean> | null
-): Interval[] {
-  const day = getWeekdayFromDate(date);
-  const blocks = schedule[day] ?? [];
-  if (dayEnabled && dayEnabled[day] === false) return [];
-  if (!blocks.length) return [];
-  const open = openIntervalsFromBlocks(blocks);
-  const blockedByExceptions: Interval[] = [];
-  for (const ex of exceptions) {
-    if (ex.type === 'full_day') return [];
-    if (ex.type === 'range' && ex.start != null && ex.end != null) {
-      blockedByExceptions.push({ start: parseTime(ex.start), end: parseTime(ex.end) });
-    }
-  }
-  const blockedByBookings: Interval[] = bookings
-    .filter((b) => (b.status ?? '') !== 'cancelled')
-    .map((b) => ({ start: parseTime(b.startTime), end: parseTime(b.endTime) }));
-  const allBlocked = mergeIntervals([...blockedFromBreaks(blocks), ...blockedByExceptions, ...blockedByBookings]);
-  return subtractIntervals(open, allBlocked);
-}
-
 export type BookingValidationFailure =
   | 'INVALID_DURATION'
   | 'DAY_DISABLED'
@@ -258,10 +196,6 @@ export type BookingValidationFailure =
   | 'OUTSIDE_AVAILABILITY'
   | 'BLOCKED';
 
-/**
- * Validación al persistir (admin / público): misma regla que computeAvailableSlots.
- * No comprueba slotState ni transacciones; solo reglas de agenda.
- */
 export function validateNewBookingTimes(params: {
   schedule: Schedule;
   dayEnabled?: Record<DayKey, boolean> | null;
